@@ -17,6 +17,7 @@ class AnnoyingDuck {
         this.isBackendConnected = false; // Track backend WebSocket connection
         this.statusIndicator = null;
         this.alwaysSpawnDuck = false; // Setting: always spawn duck regardless of EEG
+        this.showDuckEnabled = true; // Setting: whether duck can be shown at all
         this.loadSettings();
         this.init();
         this.loadScrollPositions();
@@ -32,46 +33,54 @@ class AnnoyingDuck {
     addStyles() {
         // Styles will be added dynamically when duck is created
     }
-    getRandomCorner() {
-        const corners = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
-        return corners[Math.floor(Math.random() * corners.length)];
+    getRandomSide() {
+        const sides = ['top', 'bottom', 'left', 'right'];
+        return sides[Math.floor(Math.random() * sides.length)];
     }
-    createDiagonalAnimation(corner) {
-        const animationName = `duck-walk-${corner}`;
-        // Define start positions and transforms based on corner
+    createDiagonalAnimation(side) {
+        const animationName = `duck-walk-${side}-${Date.now()}`;
+        // Define start positions and transforms based on side
         let startX, startY, endX, endY, flipTransform;
-        switch (corner) {
-            case 'top-left':
-                startX = '-150px';
+        switch (side) {
+            case 'top':
+                // Random X position along top
+                const topX = Math.random() * 80 + 10; // 10-90% of width
+                startX = `${topX}vw`;
                 startY = '-150px';
+                endX = 'calc(50vw - 50px)';
+                endY = 'calc(50vh - 50px)';
+                flipTransform = topX > 50 ? 'scaleX(-1)' : '';
+                break;
+            case 'bottom':
+                // Random X position along bottom
+                const bottomX = Math.random() * 80 + 10;
+                startX = `${bottomX}vw`;
+                startY = 'calc(100vh + 150px)';
+                endX = 'calc(50vw - 50px)';
+                endY = 'calc(50vh - 50px)';
+                flipTransform = bottomX > 50 ? 'scaleX(-1)' : '';
+                break;
+            case 'left':
+                // Random Y position along left
+                const leftY = Math.random() * 80 + 10;
+                startX = '-150px';
+                startY = `${leftY}vh`;
                 endX = 'calc(50vw - 50px)';
                 endY = 'calc(50vh - 50px)';
                 flipTransform = ''; // Duck faces right
                 break;
-            case 'top-right':
+            case 'right':
+                // Random Y position along right
+                const rightY = Math.random() * 80 + 10;
                 startX = 'calc(100vw + 150px)';
-                startY = '-150px';
-                endX = 'calc(50vw - 50px)';
-                endY = 'calc(50vh - 50px)';
-                flipTransform = 'scaleX(-1)'; // Duck faces left
-                break;
-            case 'bottom-left':
-                startX = '-150px';
-                startY = 'calc(100vh + 150px)';
-                endX = 'calc(50vw - 50px)';
-                endY = 'calc(50vh - 50px)';
-                flipTransform = ''; // Duck faces right
-                break;
-            case 'bottom-right':
-                startX = 'calc(100vw + 150px)';
-                startY = 'calc(100vh + 150px)';
+                startY = `${rightY}vh`;
                 endX = 'calc(50vw - 50px)';
                 endY = 'calc(50vh - 50px)';
                 flipTransform = 'scaleX(-1)'; // Duck faces left
                 break;
             default:
                 startX = '-150px';
-                startY = 'calc(100vh + 150px)';
+                startY = 'calc(50vh - 50px)';
                 endX = 'calc(50vw - 50px)';
                 endY = 'calc(50vh - 50px)';
                 flipTransform = '';
@@ -80,23 +89,23 @@ class AnnoyingDuck {
         // Total animation: 7 seconds (5s walk + 2s fade)
         // Percentages: 0-71.4% (5s) = walk, 71.4-100% (2s) = fade
         const style = document.createElement('style');
-        style.id = `duck-animation-${corner}`;
+        style.id = animationName;
         style.textContent = `
             @keyframes ${animationName} {
-                0% { 
-                    left: ${startX}; 
+                0% {
+                    left: ${startX};
                     top: ${startY};
                     transform: ${flipTransform};
                     opacity: 1;
                 }
-                71.4% { 
-                    left: ${endX}; 
+                80% {
+                    left: ${endX};
                     top: ${endY};
                     transform: ${flipTransform};
                     opacity: 1;
                 }
-                100% { 
-                    left: ${endX}; 
+                100% {
+                    left: ${endX};
                     top: ${endY};
                     transform: ${flipTransform};
                     opacity: 0;
@@ -118,11 +127,11 @@ class AnnoyingDuck {
     createDuck() {
         if (this.duckElement)
             return;
-        // Pick a random corner
-        const corner = this.getRandomCorner();
-        console.log(`[DUCK] Spawning from: ${corner}`);
-        // Create the diagonal animation for this corner
-        const animationName = this.createDiagonalAnimation(corner);
+        // Pick a random side
+        const side = this.getRandomSide();
+        console.log(`[DUCK] Spawning from: ${side}`);
+        // Create the animation for this side
+        const animationName = this.createDiagonalAnimation(side);
         this.duckElement = document.createElement('div');
         this.duckElement.id = 'annoying-duck';
         // Create an img element for the walking duck GIF
@@ -203,16 +212,17 @@ class AnnoyingDuck {
                         });
                         break;
                     case 'set_duck_visible':
-                        if (message.value) {
-                            this.createDuck();
-                        }
-                        else {
+                        this.showDuckEnabled = message.value ?? true;
+                        this.saveSettings();
+                        // If disabling, remove the duck immediately
+                        if (!this.showDuckEnabled) {
                             this.removeDuck();
                         }
+                        console.log(`[Settings] Show Duck: ${this.showDuckEnabled ? 'ON' : 'OFF'}`);
                         sendResponse({
                             success: true,
                             action: 'set_duck_visible',
-                            visible: this.duckVisible,
+                            visible: this.showDuckEnabled,
                             eegConnected: this.isEEGConnected,
                             backendConnected: this.isBackendConnected
                         });
@@ -227,12 +237,20 @@ class AnnoyingDuck {
                         });
                         break;
                     case 'get_status':
+                        const currentUrl = window.location.href;
+                        const pagePositions = this.scrollPositions.filter(p => p.url === currentUrl);
                         sendResponse({
                             success: true,
                             eegConnected: this.isEEGConnected,
                             backendConnected: this.isBackendConnected,
                             alwaysSpawn: this.alwaysSpawnDuck,
-                            visible: this.duckVisible
+                            visible: this.showDuckEnabled,
+                            scrollPositions: {
+                                total: pagePositions.length,
+                                currentIndex: this.currentPositionIndex,
+                                hasPrev: this.currentPositionIndex > 0,
+                                hasNext: this.currentPositionIndex < pagePositions.length - 1
+                            }
                         });
                         break;
                     case 'set_always_spawn':
@@ -244,6 +262,18 @@ class AnnoyingDuck {
                             backendConnected: this.isBackendConnected,
                             alwaysSpawn: this.alwaysSpawnDuck
                         });
+                        break;
+                    case 'scroll_prev':
+                        this.navigateToPreviousPosition();
+                        sendResponse({ success: true });
+                        break;
+                    case 'scroll_next':
+                        this.navigateToNextPosition();
+                        sendResponse({ success: true });
+                        break;
+                    case 'scroll_show_all':
+                        this.showPositionsList();
+                        sendResponse({ success: true });
                         break;
                     default:
                         sendResponse({ success: false, error: 'Unknown action' });
@@ -267,7 +297,8 @@ class AnnoyingDuck {
             if (saved) {
                 const settings = JSON.parse(saved);
                 this.alwaysSpawnDuck = settings.alwaysSpawn ?? false;
-                console.log('📂 Loaded settings:', settings);
+                this.showDuckEnabled = settings.showDuck ?? true;
+                console.log('[Settings] Loaded:', settings);
             }
         }
         catch (error) {
@@ -277,10 +308,11 @@ class AnnoyingDuck {
     saveSettings() {
         try {
             const settings = {
-                alwaysSpawn: this.alwaysSpawnDuck
+                alwaysSpawn: this.alwaysSpawnDuck,
+                showDuck: this.showDuckEnabled
             };
             localStorage.setItem('duck_settings', JSON.stringify(settings));
-            console.log('💾 Saved settings:', settings);
+            console.log('[Settings] Saved:', settings);
         }
         catch (error) {
             console.error('Failed to save settings:', error);
@@ -291,7 +323,7 @@ class AnnoyingDuck {
         try {
             this.ws = new WebSocket(this.WEBSOCKET_URL);
             this.ws.onopen = () => {
-                console.log('[WebSocket] ✅ Connected successfully');
+                console.log('[WebSocket] Connected successfully');
                 this.isBackendConnected = true;
                 this.updateStatusIndicator();
             };
@@ -302,11 +334,11 @@ class AnnoyingDuck {
                     this.handleBackendMessage(message);
                 }
                 catch (error) {
-                    console.error('❌ Failed to parse message:', error);
+                    console.error('Failed to parse message:', error);
                 }
             };
             this.ws.onerror = (error) => {
-                console.error('[WebSocket] ❌ Connection error:', error);
+                console.error('[WebSocket] Connection error:', error);
                 console.error('[WebSocket] Check if Tauri app is running: npm run tauri dev');
                 this.isBackendConnected = false;
                 this.updateStatusIndicator();
@@ -320,14 +352,14 @@ class AnnoyingDuck {
             };
         }
         catch (error) {
-            console.error('[WebSocket] ❌ Failed to create WebSocket:', error);
+            console.error('[WebSocket] Failed to create WebSocket:', error);
             this.isBackendConnected = false;
             this.updateStatusIndicator();
             setTimeout(() => this.connectWebSocket(), 5000);
         }
     }
     handleBackendMessage(message) {
-        console.log('📩 Processing message:', {
+        console.log('Processing message:', {
             type: message.type,
             focus_state: message.focus_state,
             message: message.message,
@@ -337,28 +369,33 @@ class AnnoyingDuck {
         // Handle connection status messages
         if (message.type === 'connection_status') {
             if (message.message.includes('Connected')) {
-                console.log('✅ EEG connected');
+                console.log('EEG connected');
                 this.isEEGConnected = true;
                 this.updateStatusIndicator();
-                this.showNotification('✅ EEG Connected');
+                this.showNotification('EEG Connected');
             }
             else if (message.message.includes('Disconnected')) {
-                console.log('❌ EEG disconnected');
+                console.log('EEG disconnected');
                 this.isEEGConnected = false;
                 this.updateStatusIndicator();
-                this.showNotification('❌ EEG Disconnected - Please connect your Muse headset', 10000);
+                this.showNotification('EEG Disconnected - Please connect your Muse headset', 10000);
                 this.removeDuck();
             }
             return;
         }
+        // Check if duck is enabled
+        if (!this.showDuckEnabled) {
+            console.log('Blocked: Show Duck is disabled in settings');
+            return;
+        }
         // Only process focus state messages if EEG is connected OR always spawn is enabled
         if (!this.isEEGConnected && !this.alwaysSpawnDuck) {
-            console.log('⚠️ Blocked: EEG not connected and always spawn disabled');
+            console.log('Blocked: EEG not connected and always spawn disabled');
             return;
         }
         // Update focus state based on message
         if (message.focus_state === 'unfocused') {
-            console.log('🔴 User unfocused - spawning duck');
+            console.log('User unfocused - spawning duck');
             this.isUserFocused = false;
             this.saveCurrentScrollPosition(message.message);
             // Show duck when unfocused
@@ -371,10 +408,10 @@ class AnnoyingDuck {
             this.showNotification(message.message);
         }
         else if (message.focus_state === 'focused') {
-            console.log('🟢 User focused - removing duck');
+            console.log('User focused - removing duck');
             this.isUserFocused = true;
             this.removeDuck();
-            this.showNotification('Focus restored! 🎯');
+            this.showNotification('Focus restored!');
         }
     }
     saveCurrentScrollPosition(message) {
@@ -388,14 +425,14 @@ class AnnoyingDuck {
         this.currentPositionIndex = this.scrollPositions.length - 1;
         // Save to localStorage
         this.saveScrollPositions();
-        console.log('💾 Saved scroll position:', position);
+        console.log('Saved scroll position:', position);
     }
     loadScrollPositions() {
         try {
             const saved = localStorage.getItem('duck_scroll_positions');
             if (saved) {
                 this.scrollPositions = JSON.parse(saved);
-                console.log(`📂 Loaded ${this.scrollPositions.length} scroll positions`);
+                console.log(`Loaded ${this.scrollPositions.length} scroll positions`);
             }
         }
         catch (error) {
@@ -497,7 +534,7 @@ class AnnoyingDuck {
             font-family: monospace;
         `;
         const title = document.createElement('h3');
-        title.textContent = '📍 Saved Scroll Positions';
+        title.textContent = 'Saved Scroll Positions';
         title.style.cssText = 'margin: 0 0 15px 0; color: #00ff00;';
         overlay.appendChild(title);
         pagePositions.forEach((pos, idx) => {

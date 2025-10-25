@@ -887,6 +887,19 @@ def index():
 def metrics():
     return jsonify(current_metrics)
 
+@app.route('/api/metrics')
+def api_metrics():
+    """API endpoint for external services (Tauri backend)"""
+    return jsonify({
+        'attention': current_metrics['attention'],
+        'focus_score': current_metrics['focus_score'],
+        'brain_state': current_metrics['brain_state'],
+        'head_orientation': current_metrics['head_orientation'],
+        'heart_rate': current_metrics['heart_rate'],
+        'movement_intensity': current_metrics['movement_intensity'],
+        'theta_beta_ratio': current_metrics.get('attention_confidence', 0)  # Using confidence as theta_beta proxy
+    })
+
 @app.route('/calibrate', methods=['POST'])
 def calibrate():
     """Calibrate baseline for this user (call after 30s of focused work)"""

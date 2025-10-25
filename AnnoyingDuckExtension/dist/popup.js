@@ -4,6 +4,9 @@ const quackBtn = document.getElementById('quackBtn');
 const showDuckToggle = document.getElementById('showDuckToggle');
 const reconnectBtn = document.getElementById('reconnectBtn');
 const alwaysSpawnToggle = document.getElementById('alwaysSpawnToggle');
+const prevPositionBtn = document.getElementById('prevPositionBtn');
+const nextPositionBtn = document.getElementById('nextPositionBtn');
+const showAllPositionsBtn = document.getElementById('showAllPositionsBtn');
 const statusMessage = document.getElementById('statusMessage');
 const eegIndicator = document.getElementById('eegIndicator');
 const eegStatus = document.getElementById('eegStatus');
@@ -30,10 +33,40 @@ function updateConnectionStatus(eegConnected, backendConnected) {
     if (backendConnected) {
         backendIndicator.className = 'status-indicator connected';
         backendStatus.textContent = 'Connected';
+        // Hide reconnect button when connected
+        if (reconnectBtn)
+            reconnectBtn.style.display = 'none';
     }
     else {
         backendIndicator.className = 'status-indicator disconnected';
         backendStatus.textContent = 'Disconnected';
+        // Show reconnect button when disconnected
+        if (reconnectBtn)
+            reconnectBtn.style.display = 'block';
+    }
+}
+function updateScrollHistoryUI(scrollPositions) {
+    const scrollSection = document.querySelector('.settings-section:has(#prevPositionBtn)');
+    if (scrollPositions.total === 0) {
+        if (scrollSection)
+            scrollSection.style.display = 'none';
+        return;
+    }
+    if (scrollSection)
+        scrollSection.style.display = 'block';
+    // Update button states
+    if (prevPositionBtn) {
+        prevPositionBtn.disabled = !scrollPositions.hasPrev;
+        prevPositionBtn.style.opacity = scrollPositions.hasPrev ? '1' : '0.5';
+    }
+    if (nextPositionBtn) {
+        nextPositionBtn.disabled = !scrollPositions.hasNext;
+        nextPositionBtn.style.opacity = scrollPositions.hasNext ? '1' : '0.5';
+    }
+    // Update title with position count
+    const titleEl = scrollSection?.querySelector('.settings-title');
+    if (titleEl) {
+        titleEl.textContent = `Scroll History (${scrollPositions.currentIndex + 1} of ${scrollPositions.total})`;
     }
 }
 async function loadStatus() {
@@ -55,6 +88,9 @@ async function loadStatus() {
                 }
                 if (response.visible !== undefined) {
                     showDuckToggle.checked = response.visible;
+                }
+                if (response.scrollPositions !== undefined) {
+                    updateScrollHistoryUI(response.scrollPositions);
                 }
             }
         }
@@ -191,6 +227,15 @@ reconnectBtn?.addEventListener('click', () => {
 });
 alwaysSpawnToggle?.addEventListener('change', () => {
     sendMessage('set_always_spawn', alwaysSpawnToggle.checked);
+});
+prevPositionBtn?.addEventListener('click', () => {
+    sendMessage('scroll_prev');
+});
+nextPositionBtn?.addEventListener('click', () => {
+    sendMessage('scroll_next');
+});
+showAllPositionsBtn?.addEventListener('click', () => {
+    sendMessage('scroll_show_all');
 });
 // Load status on popup open
 loadStatus();

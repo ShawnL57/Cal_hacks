@@ -42,6 +42,7 @@ pub struct ServiceStatus {
     pub websocket_server: bool,
     pub extension_connected: bool,
     pub messages_received: u32,
+    pub muse_connected: bool,
 }
 
 // Shared application state
@@ -66,11 +67,13 @@ fn greet(name: &str) -> String {
 #[tauri::command]
 async fn get_service_status(state: tauri::State<'_, AppState>) -> Result<ServiceStatus, String> {
     let message_count = *state.message_count.lock().unwrap();
+    let muse_connected = *state.muse_connected.lock().unwrap();
     Ok(ServiceStatus {
         http_server: true,
         websocket_server: true,
         extension_connected: state.ws_tx.receiver_count() > 0,
         messages_received: message_count,
+        muse_connected,
     })
 }
 
@@ -131,6 +134,27 @@ async fn handle_websocket(socket: WebSocket, state: AppState) {
         return;
     }
 
+    // Send current EEG connection status
+    let is_connected = *state.muse_connected.lock().unwrap();
+    let status_msg = DuckMessage {
+        message: if is_connected {
+            "EEG Connected".to_string()
+        } else {
+            "EEG Disconnected - Please connect your Muse headset".to_string()
+        },
+        timestamp: chrono::Utc::now().to_rfc3339(),
+        msg_type: "connection_status".to_string(),
+        focus_state: None,
+    };
+
+    if sender
+        .send(Message::Text(serde_json::to_string(&status_msg).unwrap()))
+        .await
+        .is_err()
+    {
+        return;
+    }
+
     // Spawn task to forward broadcast messages to this WebSocket
     let mut send_task = tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {
@@ -171,13 +195,21 @@ async fn health_check() -> impl IntoResponse {
 async fn discover_muse_port(client: &reqwest::Client) -> Option<u16> {
     for &port in MUSE_API_PORTS {
         let url = format!("http://localhost:{}/api/metrics", port);
-        if let Ok(response) = client.get(&url).send().await {
-            if response.status().is_success() {
-                println!("✅ Found Muse API on port {}", port);
-                return Some(port);
+        match client.get(&url).send().await {
+            Ok(response) => {
+                if response.status().is_success() {
+                    println!("✅ Found Muse API on port {}", port);
+                    return Some(port);
+                } else {
+                    println!("⚠️ Port {} responded with status: {}", port, response.status());
+                }
+            }
+            Err(e) => {
+                println!("❌ Port {} error: {}", port, e);
             }
         }
     }
+    println!("❌ No Muse API found on any port");
     None
 }
 

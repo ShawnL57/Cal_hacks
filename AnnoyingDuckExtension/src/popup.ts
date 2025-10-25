@@ -1,5 +1,5 @@
 interface Message {
-    action: 'quack' | 'set_duck_visible' | 'reconnect' | 'get_status' | 'set_always_spawn';
+    action: 'quack' | 'set_duck_visible' | 'reconnect' | 'get_status' | 'set_always_spawn' | 'scroll_prev' | 'scroll_next' | 'scroll_show_all';
     value?: boolean;
 }
 
@@ -11,6 +11,12 @@ interface MessageResponse {
     eegConnected?: boolean;
     backendConnected?: boolean;
     alwaysSpawn?: boolean;
+    scrollPositions?: {
+        total: number;
+        currentIndex: number;
+        hasPrev: boolean;
+        hasNext: boolean;
+    };
 }
 
 // UI Elements
@@ -18,6 +24,9 @@ const quackBtn = document.getElementById('quackBtn') as HTMLButtonElement;
 const showDuckToggle = document.getElementById('showDuckToggle') as HTMLInputElement;
 const reconnectBtn = document.getElementById('reconnectBtn') as HTMLButtonElement;
 const alwaysSpawnToggle = document.getElementById('alwaysSpawnToggle') as HTMLInputElement;
+const prevPositionBtn = document.getElementById('prevPositionBtn') as HTMLButtonElement;
+const nextPositionBtn = document.getElementById('nextPositionBtn') as HTMLButtonElement;
+const showAllPositionsBtn = document.getElementById('showAllPositionsBtn') as HTMLButtonElement;
 const statusMessage = document.getElementById('statusMessage') as HTMLDivElement;
 const eegIndicator = document.getElementById('eegIndicator') as HTMLSpanElement;
 const eegStatus = document.getElementById('eegStatus') as HTMLSpanElement;
@@ -46,9 +55,40 @@ function updateConnectionStatus(eegConnected: boolean, backendConnected: boolean
     if (backendConnected) {
         backendIndicator.className = 'status-indicator connected';
         backendStatus.textContent = 'Connected';
+        // Hide reconnect button when connected
+        if (reconnectBtn) reconnectBtn.style.display = 'none';
     } else {
         backendIndicator.className = 'status-indicator disconnected';
         backendStatus.textContent = 'Disconnected';
+        // Show reconnect button when disconnected
+        if (reconnectBtn) reconnectBtn.style.display = 'block';
+    }
+}
+
+function updateScrollHistoryUI(scrollPositions: { total: number; currentIndex: number; hasPrev: boolean; hasNext: boolean }): void {
+    const scrollSection = document.querySelector('.settings-section:has(#prevPositionBtn)') as HTMLElement;
+
+    if (scrollPositions.total === 0) {
+        if (scrollSection) scrollSection.style.display = 'none';
+        return;
+    }
+
+    if (scrollSection) scrollSection.style.display = 'block';
+
+    // Update button states
+    if (prevPositionBtn) {
+        prevPositionBtn.disabled = !scrollPositions.hasPrev;
+        prevPositionBtn.style.opacity = scrollPositions.hasPrev ? '1' : '0.5';
+    }
+    if (nextPositionBtn) {
+        nextPositionBtn.disabled = !scrollPositions.hasNext;
+        nextPositionBtn.style.opacity = scrollPositions.hasNext ? '1' : '0.5';
+    }
+
+    // Update title with position count
+    const titleEl = scrollSection?.querySelector('.settings-title');
+    if (titleEl) {
+        titleEl.textContent = `Scroll History (${scrollPositions.currentIndex + 1} of ${scrollPositions.total})`;
     }
 }
 
@@ -76,6 +116,9 @@ async function loadStatus(): Promise<void> {
                 if (response.visible !== undefined) {
                     showDuckToggle.checked = response.visible;
                 }
+                if (response.scrollPositions !== undefined) {
+                    updateScrollHistoryUI(response.scrollPositions);
+                }
             }
         } catch (error) {
             // Content script not loaded yet
@@ -86,7 +129,7 @@ async function loadStatus(): Promise<void> {
     }
 }
 
-async function sendMessage(action: 'quack' | 'set_duck_visible' | 'reconnect' | 'set_always_spawn', value?: boolean): Promise<void> {
+async function sendMessage(action: 'quack' | 'set_duck_visible' | 'reconnect' | 'set_always_spawn' | 'scroll_prev' | 'scroll_next' | 'scroll_show_all', value?: boolean): Promise<void> {
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
@@ -221,6 +264,18 @@ reconnectBtn?.addEventListener('click', () => {
 
 alwaysSpawnToggle?.addEventListener('change', () => {
     sendMessage('set_always_spawn', alwaysSpawnToggle.checked);
+});
+
+prevPositionBtn?.addEventListener('click', () => {
+    sendMessage('scroll_prev');
+});
+
+nextPositionBtn?.addEventListener('click', () => {
+    sendMessage('scroll_next');
+});
+
+showAllPositionsBtn?.addEventListener('click', () => {
+    sendMessage('scroll_show_all');
 });
 
 // Load status on popup open

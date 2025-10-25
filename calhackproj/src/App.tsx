@@ -10,6 +10,7 @@ interface ServiceStatus {
   websocket_server: boolean;
   extension_connected: boolean;
   messages_received: number;
+  muse_connected: boolean;
 }
 
 interface DuckMessage {
@@ -41,6 +42,7 @@ function App() {
     try {
       const result = await invoke<ServiceStatus>("get_service_status");
       setStatus(result);
+      setMuseConnected(result.muse_connected);
       setIsLoading(false);
     } catch (error) {
       console.error("Failed to load status:", error);
@@ -67,15 +69,14 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch Muse metrics every 500ms
+  // Fetch Muse metrics every 500ms (for displaying metrics, not connection status)
   useEffect(() => {
     async function loadMetrics() {
       try {
         const data = await fetchMuseMetrics();
         setMuseMetrics(data);
-        setMuseConnected(true);
       } catch (error) {
-        setMuseConnected(false);
+        setMuseMetrics(null);
       }
     }
 
