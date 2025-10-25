@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+*.log
+
+# Rust
+target/
+Cargo.lock
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build outputs
+calhackproj/dist/
+calhackproj/src-tauri/target/
+python-backend/dist/
+python-backend/build/
+
+# Extension
+browser-extension/*.crx
+browser-extension/*.pem
