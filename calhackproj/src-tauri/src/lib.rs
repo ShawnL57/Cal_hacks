@@ -17,12 +17,20 @@ const MUSE_API_PORTS: &[u16] = &[5000, 5001, 5002, 5003, 5004, 5005];
 
 // Data structures
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MessageMetrics {
+    pub attention: String,
+    pub focus_score: f64,
+    pub brain_state: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DuckMessage {
     pub message: String,
     pub timestamp: String,
     #[serde(rename = "type")]
     pub msg_type: String,
     pub focus_state: Option<String>,
+    pub metrics: Option<MessageMetrics>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -124,6 +132,7 @@ async fn handle_websocket(socket: WebSocket, state: AppState) {
         timestamp: chrono::Utc::now().to_rfc3339(),
         msg_type: "connection".to_string(),
         focus_state: None,
+        metrics: None,
     };
 
     if sender
@@ -145,6 +154,7 @@ async fn handle_websocket(socket: WebSocket, state: AppState) {
         timestamp: chrono::Utc::now().to_rfc3339(),
         msg_type: "connection_status".to_string(),
         focus_state: None,
+        metrics: None,
     };
 
     if sender
@@ -255,6 +265,7 @@ async fn monitor_muse_metrics(state: AppState) {
                                     timestamp: chrono::Utc::now().to_rfc3339(),
                                     msg_type: "connection_status".to_string(),
                                     focus_state: None,
+                                    metrics: None,
                                 };
 
                                 if let Some(app) = state.tauri_handle.lock().unwrap().as_ref() {
@@ -293,14 +304,14 @@ async fn monitor_muse_metrics(state: AppState) {
 
                                 if elapsed.as_secs() >= 2 {
                                     // Send message for this state
-                                    let focus_state = if current_state.to_lowercase().contains("unfocused")
-                                        || current_state.to_lowercase().contains("low") {
-                                        "unfocused"
-                                    } else {
-                                        "focused"
+                                    // Map attention states: focused/neutral = focused, distracted/drowsy/unknown = unfocused
+                                    let focus_state = match current_state.to_lowercase().as_str() {
+                                        "focused" | "neutral" => "focused",
+                                        "distracted" | "drowsy" | "unknown" => "unfocused",
+                                        _ => "unfocused"  // Default to unfocused for safety
                                     };
 
-                                    println!("⏰ State stable for 2s, mapped to: {}", focus_state);
+                                    println!("⏰ State '{}' stable for 2s, mapped to: {}", current_state, focus_state);
 
                                     let message = if focus_state == "unfocused" {
                                         "⚠️ Distraction detected! Duck spawned.".to_string()
@@ -313,6 +324,11 @@ async fn monitor_muse_metrics(state: AppState) {
                                         timestamp: chrono::Utc::now().to_rfc3339(),
                                         msg_type: "focus_state_change".to_string(),
                                         focus_state: Some(focus_state.to_string()),
+                                        metrics: Some(MessageMetrics {
+                                            attention: metrics.attention.clone(),
+                                            focus_score: metrics.focus_score,
+                                            brain_state: metrics.brain_state.clone(),
+                                        }),
                                     });
 
                                     should_send_message = true;
@@ -390,6 +406,7 @@ async fn handle_muse_failure(state: &AppState, last_message_sent: &mut bool, rea
             timestamp: chrono::Utc::now().to_rfc3339(),
             msg_type: "connection_status".to_string(),
             focus_state: None,
+            metrics: None,
         };
 
         if let Some(app) = state.tauri_handle.lock().unwrap().as_ref() {

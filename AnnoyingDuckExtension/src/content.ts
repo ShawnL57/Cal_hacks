@@ -16,6 +16,11 @@ interface DuckMessage {
     timestamp: string;
     type: string;
     focus_state?: 'focused' | 'unfocused';
+    metrics?: {
+        attention?: string;
+        focus_score?: number;
+        brain_state?: string;
+    };
 }
 
 interface ScrollPosition {
@@ -23,6 +28,12 @@ interface ScrollPosition {
     scrollY: number;
     timestamp: string;
     message: string;
+}
+
+interface AttentionData {
+    timestamp: number;
+    attention: string;
+    focusScore: number;
 }
 
 class AnnoyingDuck {
@@ -43,6 +54,8 @@ class AnnoyingDuck {
     private statusIndicator: HTMLDivElement | null = null;
     private alwaysSpawnDuck: boolean = false; // Setting: always spawn duck regardless of EEG
     private showDuckEnabled: boolean = true; // Setting: whether duck can be shown at all
+    private attentionHistory: AttentionData[] = []; // Last 2 minutes of attention data
+    private readonly MAX_HISTORY_DURATION = 120000; // 2 minutes in ms
 
     constructor() {
         this.loadSettings();
@@ -302,7 +315,8 @@ class AnnoyingDuck {
                                     currentIndex: this.currentPositionIndex,
                                     hasPrev: this.currentPositionIndex > 0,
                                     hasNext: this.currentPositionIndex < pagePositions.length - 1
-                                }
+                                },
+                                attentionHistory: this.attentionHistory
                             });
                             break;
                         case 'set_always_spawn':
@@ -372,6 +386,21 @@ class AnnoyingDuck {
         }
     }
 
+    private addAttentionData(attention: string, focusScore: number): void {
+        const now = Date.now();
+
+        // Add new data point
+        this.attentionHistory.push({
+            timestamp: now,
+            attention: attention,
+            focusScore: focusScore
+        });
+
+        // Remove data older than 2 minutes
+        const cutoff = now - this.MAX_HISTORY_DURATION;
+        this.attentionHistory = this.attentionHistory.filter(d => d.timestamp > cutoff);
+    }
+
     private connectWebSocket(): void {
         console.log(`[WebSocket] Attempting connection to ${this.WEBSOCKET_URL}`);
 
@@ -424,6 +453,11 @@ class AnnoyingDuck {
             eegConnected: this.isEEGConnected,
             alwaysSpawn: this.alwaysSpawnDuck
         });
+
+        // Track attention data if metrics are present
+        if (message.metrics?.attention && message.metrics?.focus_score !== undefined) {
+            this.addAttentionData(message.metrics.attention, message.metrics.focus_score);
+        }
 
         // Handle connection status messages
         if (message.type === 'connection_status') {

@@ -18,6 +18,8 @@ class AnnoyingDuck {
         this.statusIndicator = null;
         this.alwaysSpawnDuck = false; // Setting: always spawn duck regardless of EEG
         this.showDuckEnabled = true; // Setting: whether duck can be shown at all
+        this.attentionHistory = []; // Last 2 minutes of attention data
+        this.MAX_HISTORY_DURATION = 120000; // 2 minutes in ms
         this.loadSettings();
         this.init();
         this.loadScrollPositions();
@@ -250,7 +252,8 @@ class AnnoyingDuck {
                                 currentIndex: this.currentPositionIndex,
                                 hasPrev: this.currentPositionIndex > 0,
                                 hasNext: this.currentPositionIndex < pagePositions.length - 1
-                            }
+                            },
+                            attentionHistory: this.attentionHistory
                         });
                         break;
                     case 'set_always_spawn':
@@ -318,6 +321,18 @@ class AnnoyingDuck {
             console.error('Failed to save settings:', error);
         }
     }
+    addAttentionData(attention, focusScore) {
+        const now = Date.now();
+        // Add new data point
+        this.attentionHistory.push({
+            timestamp: now,
+            attention: attention,
+            focusScore: focusScore
+        });
+        // Remove data older than 2 minutes
+        const cutoff = now - this.MAX_HISTORY_DURATION;
+        this.attentionHistory = this.attentionHistory.filter(d => d.timestamp > cutoff);
+    }
     connectWebSocket() {
         console.log(`[WebSocket] Attempting connection to ${this.WEBSOCKET_URL}`);
         try {
@@ -366,6 +381,10 @@ class AnnoyingDuck {
             eegConnected: this.isEEGConnected,
             alwaysSpawn: this.alwaysSpawnDuck
         });
+        // Track attention data if metrics are present
+        if (message.metrics?.attention && message.metrics?.focus_score !== undefined) {
+            this.addAttentionData(message.metrics.attention, message.metrics.focus_score);
+        }
         // Handle connection status messages
         if (message.type === 'connection_status') {
             if (message.message.includes('Connected')) {
