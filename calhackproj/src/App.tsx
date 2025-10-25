@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import TypingTest from "./TypingTest";
 import "./App.css";
 
 interface ServiceStatus {
@@ -16,10 +17,22 @@ interface DuckMessage {
   type: string;
 }
 
+interface MuseMetrics {
+  attention: string;
+  focus_score: number;
+  brain_state: string;
+  head_orientation: string;
+  heart_rate: number;
+  movement_intensity: number;
+  theta_beta_ratio: number;
+}
+
 function App() {
   const [status, setStatus] = useState<ServiceStatus | null>(null);
   const [messages, setMessages] = useState<DuckMessage[]>([]);
+  const [museMetrics, setMuseMetrics] = useState<MuseMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showTypingTest, setShowTypingTest] = useState(false);
 
   // Load service status
   async function loadStatus() {
@@ -52,6 +65,23 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch Muse metrics every 500ms
+  useEffect(() => {
+    async function fetchMuseMetrics() {
+      try {
+        const response = await fetch("http://localhost:5001/api/metrics");
+        const data = await response.json();
+        setMuseMetrics(data);
+      } catch (error) {
+        console.log("Muse backend not connected");
+      }
+    }
+
+    fetchMuseMetrics();
+    const interval = setInterval(fetchMuseMetrics, 500);
+    return () => clearInterval(interval);
+  }, []);
+
   const getStatusColor = (isActive: boolean) => {
     return isActive ? "#00ff00" : "#ff3333";
   };
@@ -60,10 +90,14 @@ function App() {
     return isActive ? "Running" : "Stopped";
   };
 
+  if (showTypingTest) {
+    return <TypingTest />;
+  }
+
   if (isLoading) {
     return (
       <div className="container">
-        <h1>🦆 Duck Controller</h1>
+        <h1>🦆 Duck Controller + 🧠 Muse Monitor</h1>
         <p>Loading...</p>
       </div>
     );
@@ -72,9 +106,51 @@ function App() {
   return (
     <div className="container">
       <header>
-        <h1>🦆 Duck Controller</h1>
+        <h1>🦆 Duck Controller + 🧠 Muse Monitor</h1>
         <p className="subtitle">Desktop Control Panel</p>
       </header>
+
+      {museMetrics && (
+        <div className="card">
+          <h2>🧠 Muse Brain Metrics</h2>
+          <div className="status-grid">
+            <div className="status-item">
+              <div className="status-label">Focus Level</div>
+              <div className="status-value">
+                {museMetrics.attention} ({(museMetrics.focus_score * 100).toFixed(0)}%)
+              </div>
+            </div>
+            <div className="status-item">
+              <div className="status-label">Brain State</div>
+              <div className="status-value">{museMetrics.brain_state}</div>
+            </div>
+            <div className="status-item">
+              <div className="status-label">Head Orientation</div>
+              <div className="status-value">{museMetrics.head_orientation}</div>
+            </div>
+            <div className="status-item">
+              <div className="status-label">Heart Rate</div>
+              <div className="status-value">{Math.round(museMetrics.heart_rate)} bpm</div>
+            </div>
+          </div>
+          <div style={{ marginTop: "15px", textAlign: "center" }}>
+            <button
+              onClick={() => setShowTypingTest(true)}
+              style={{
+                padding: "10px 20px",
+                background: "#00ff00",
+                color: "#000",
+                border: "none",
+                borderRadius: "5px",
+                fontWeight: "bold",
+                cursor: "pointer",
+              }}
+            >
+              📝 Start Focus Calibration Test
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <h2>📊 Services Status</h2>
