@@ -1,0 +1,100 @@
+interface Message {
+    action: 'quack' | 'toggle';
+}
+
+interface MessageResponse {
+    success: boolean;
+    action?: string;
+    visible?: boolean;
+    error?: string;
+}
+
+const quackBtn = document.getElementById('quackBtn') as HTMLButtonElement;
+const toggleBtn = document.getElementById('toggleBtn') as HTMLButtonElement;
+const statusDiv = document.createElement('div');
+statusDiv.style.cssText = 'margin-top: 10px; font-size: 12px; color: #666;';
+document.body.appendChild(statusDiv);
+
+function showStatus(message: string, isError: boolean = false): void {
+    statusDiv.textContent = message;
+    statusDiv.style.color = isError ? '#d32f2f' : '#2e7d32';
+    setTimeout(() => {
+        statusDiv.textContent = '';
+    }, 3000);
+}
+
+async function sendMessage(action: 'quack' | 'toggle'): Promise<void> {
+    try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+        if (!tab?.id) {
+            showStatus('No active tab found', true);
+            return;
+        }
+
+        // Check if we can inject content scripts on this page
+        const url = tab.url || '';
+        if (url.startsWith('chrome://') || url.startsWith('chrome-extension://') ||
+            url.startsWith('edge://') || url.startsWith('about:') || url === '') {
+            showStatus('Cannot run on browser internal pages', true);
+            return;
+        }
+
+        // Try to send message
+        try {
+            const response = await chrome.tabs.sendMessage(tab.id, { action } as Message) as MessageResponse;
+
+            if (response?.success) {
+                showStatus(action === 'quack' ? '🦆 Quack sent!' : `🦆 Duck ${response.visible ? 'shown' : 'hidden'}!`);
+            } else {
+                showStatus('Something went wrong', true);
+            }
+        } catch (error) {
+            // Content script not ready, inject it manually
+            console.log('Injecting content script...');
+
+            try {
+                // Check if chrome.scripting is available
+                if (!chrome.scripting) {
+                    showStatus('Scripting API not available. Refresh the page and try again.', true);
+                    return;
+                }
+
+                await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    files: ['dist/content.js']
+                });
+
+                // Wait for script to initialize
+                await new Promise(resolve => setTimeout(resolve, 300));
+
+                // Try again
+                try {
+                    const response = await chrome.tabs.sendMessage(tab.id, { action } as Message) as MessageResponse;
+
+                    if (response?.success) {
+                        showStatus(action === 'quack' ? '🦆 Quack sent!' : `🦆 Duck ${response.visible ? 'shown' : 'hidden'}!`);
+                    } else {
+                        showStatus('Failed to communicate', true);
+                    }
+                } catch (retryError) {
+                    showStatus('Refresh the page and try again', true);
+                }
+            } catch (injectError) {
+                console.error('Injection error:', injectError);
+                showStatus('Cannot inject on this page. Try a different website.', true);
+            }
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showStatus('Error: ' + (error as Error).message, true);
+    }
+}
+
+quackBtn?.addEventListener('click', () => {
+    sendMessage('quack');
+});
+
+toggleBtn?.addEventListener('click', () => {
+    sendMessage('toggle');
+});
