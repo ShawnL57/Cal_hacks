@@ -4,7 +4,12 @@
     "version": "1.0",
     "description": "An annoying duck built with TypeScript!",
     "permissions": [
-        "activeTab"
+        "activeTab",
+        "storage"
+    ],
+    "host_permissions": [
+        "http://127.0.0.1:3030/*",
+        "ws://127.0.0.1:3030/*"
     ],
     "action": {
         "default_popup": "popup.html",

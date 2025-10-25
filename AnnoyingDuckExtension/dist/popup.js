@@ -1,17 +1,73 @@
 "use strict";
+// UI Elements
 const quackBtn = document.getElementById('quackBtn');
-const toggleBtn = document.getElementById('toggleBtn');
-const statusDiv = document.createElement('div');
-statusDiv.style.cssText = 'margin-top: 10px; font-size: 12px; color: #666;';
-document.body.appendChild(statusDiv);
+const showDuckToggle = document.getElementById('showDuckToggle');
+const reconnectBtn = document.getElementById('reconnectBtn');
+const alwaysSpawnToggle = document.getElementById('alwaysSpawnToggle');
+const statusMessage = document.getElementById('statusMessage');
+const eegIndicator = document.getElementById('eegIndicator');
+const eegStatus = document.getElementById('eegStatus');
+const backendIndicator = document.getElementById('backendIndicator');
+const backendStatus = document.getElementById('backendStatus');
 function showStatus(message, isError = false) {
-    statusDiv.textContent = message;
-    statusDiv.style.color = isError ? '#d32f2f' : '#2e7d32';
+    statusMessage.textContent = message;
+    statusMessage.className = 'status-message ' + (isError ? 'error' : 'success');
     setTimeout(() => {
-        statusDiv.textContent = '';
+        statusMessage.className = 'status-message';
     }, 3000);
 }
-async function sendMessage(action) {
+function updateConnectionStatus(eegConnected, backendConnected) {
+    // Update EEG status
+    if (eegConnected) {
+        eegIndicator.className = 'status-indicator connected';
+        eegStatus.textContent = 'Connected';
+    }
+    else {
+        eegIndicator.className = 'status-indicator disconnected';
+        eegStatus.textContent = 'Disconnected';
+    }
+    // Update Backend status
+    if (backendConnected) {
+        backendIndicator.className = 'status-indicator connected';
+        backendStatus.textContent = 'Connected';
+    }
+    else {
+        backendIndicator.className = 'status-indicator disconnected';
+        backendStatus.textContent = 'Disconnected';
+    }
+}
+async function loadStatus() {
+    try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab?.id)
+            return;
+        const url = tab.url || '';
+        if (url.startsWith('chrome://') || url.startsWith('chrome-extension://') ||
+            url.startsWith('edge://') || url.startsWith('about:') || url === '') {
+            return;
+        }
+        try {
+            const response = await chrome.tabs.sendMessage(tab.id, { action: 'get_status' });
+            if (response?.success) {
+                updateConnectionStatus(response.eegConnected ?? false, response.backendConnected ?? false);
+                if (response.alwaysSpawn !== undefined) {
+                    alwaysSpawnToggle.checked = response.alwaysSpawn;
+                }
+                if (response.visible !== undefined) {
+                    showDuckToggle.checked = response.visible;
+                }
+            }
+        }
+        catch (error) {
+            // Content script not loaded yet
+            console.log('Content script not loaded');
+        }
+    }
+    catch (error) {
+        console.error('Error loading status:', error);
+    }
+}
+async function sendMessage(action, value) {
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab?.id) {
@@ -27,9 +83,33 @@ async function sendMessage(action) {
         }
         // Try to send message
         try {
-            const response = await chrome.tabs.sendMessage(tab.id, { action });
+            const message = { action };
+            if (value !== undefined) {
+                message.value = value;
+            }
+            const response = await chrome.tabs.sendMessage(tab.id, message);
             if (response?.success) {
-                showStatus(action === 'quack' ? '🦆 Quack sent!' : `🦆 Duck ${response.visible ? 'shown' : 'hidden'}!`);
+                switch (action) {
+                    case 'quack':
+                        showStatus('Quack sent!');
+                        break;
+                    case 'set_duck_visible':
+                        showStatus(`Duck ${value ? 'shown' : 'hidden'}!`);
+                        if (response.visible !== undefined) {
+                            showDuckToggle.checked = response.visible;
+                        }
+                        break;
+                    case 'reconnect':
+                        showStatus('Reconnecting to backend...');
+                        break;
+                    case 'set_always_spawn':
+                        showStatus(`Always spawn: ${value ? 'ON' : 'OFF'}`);
+                        break;
+                }
+                // Update status
+                if (response.eegConnected !== undefined && response.backendConnected !== undefined) {
+                    updateConnectionStatus(response.eegConnected, response.backendConnected);
+                }
             }
             else {
                 showStatus('Something went wrong', true);
@@ -49,12 +129,36 @@ async function sendMessage(action) {
                     files: ['dist/content.js']
                 });
                 // Wait for script to initialize
-                await new Promise(resolve => setTimeout(resolve, 300));
+                await new Promise(resolve => setTimeout(resolve, 500));
                 // Try again
                 try {
-                    const response = await chrome.tabs.sendMessage(tab.id, { action });
+                    const message = { action };
+                    if (value !== undefined) {
+                        message.value = value;
+                    }
+                    const response = await chrome.tabs.sendMessage(tab.id, message);
                     if (response?.success) {
-                        showStatus(action === 'quack' ? '🦆 Quack sent!' : `🦆 Duck ${response.visible ? 'shown' : 'hidden'}!`);
+                        switch (action) {
+                            case 'quack':
+                                showStatus('Quack sent!');
+                                break;
+                            case 'set_duck_visible':
+                                showStatus(`Duck ${value ? 'shown' : 'hidden'}!`);
+                                if (response.visible !== undefined) {
+                                    showDuckToggle.checked = response.visible;
+                                }
+                                break;
+                            case 'reconnect':
+                                showStatus('Reconnecting...');
+                                break;
+                            case 'set_always_spawn':
+                                showStatus(`Always spawn: ${value ? 'ON' : 'OFF'}`);
+                                break;
+                        }
+                        // Update status
+                        if (response.eegConnected !== undefined && response.backendConnected !== undefined) {
+                            updateConnectionStatus(response.eegConnected, response.backendConnected);
+                        }
                     }
                     else {
                         showStatus('Failed to communicate', true);
@@ -75,9 +179,20 @@ async function sendMessage(action) {
         showStatus('Error: ' + error.message, true);
     }
 }
+// Event Listeners
 quackBtn?.addEventListener('click', () => {
     sendMessage('quack');
 });
-toggleBtn?.addEventListener('click', () => {
-    sendMessage('toggle');
+showDuckToggle?.addEventListener('change', () => {
+    sendMessage('set_duck_visible', showDuckToggle.checked);
 });
+reconnectBtn?.addEventListener('click', () => {
+    sendMessage('reconnect');
+});
+alwaysSpawnToggle?.addEventListener('change', () => {
+    sendMessage('set_always_spawn', alwaysSpawnToggle.checked);
+});
+// Load status on popup open
+loadStatus();
+// Update status every 2 seconds
+setInterval(loadStatus, 2000);

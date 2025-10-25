@@ -3,38 +3,324 @@
 
 <head>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            width: 300px;
+            width: 350px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .container {
             padding: 20px;
-            font-family: Arial, sans-serif;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
         }
 
         h1 {
-            font-size: 20px;
+            font-size: 24px;
+            margin-bottom: 5px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .status-card {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             margin-bottom: 10px;
         }
 
+        .status-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .status-label {
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-indicator.connected {
+            background: #4caf50;
+            box-shadow: 0 0 10px #4caf50;
+        }
+
+        .status-indicator.disconnected {
+            background: #f44336;
+            box-shadow: 0 0 10px #f44336;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
         button {
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
             cursor: pointer;
-            margin: 5px;
-            background: #ffd700;
-            border: 2px solid #ff8c00;
-            border-radius: 5px;
+            border: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
         }
 
         button:hover {
-            background: #ffed4e;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            color: #000;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .btn-reconnect {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+        }
+
+        .settings-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .settings-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+
+        .setting-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .setting-item:first-child {
+            border-top: none;
+            padding-top: 0;
+        }
+
+        .setting-label {
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Custom toggle switch */
+        .toggle {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.3);
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #4caf50;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        .status-message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            text-align: center;
+            display: none;
+        }
+
+        .status-message.success {
+            background: rgba(76, 175, 80, 0.3);
+            display: block;
+        }
+
+        .status-message.error {
+            background: rgba(244, 67, 54, 0.3);
+            display: block;
+        }
+
+        .keyboard-shortcuts {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 15px;
+            font-size: 11px;
+        }
+
+        .shortcuts-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            opacity: 0.9;
+        }
+
+        .shortcut {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            opacity: 0.8;
+        }
+
+        .key {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
         }
     </style>
 </head>
 
 <body>
-    <h1>🦆 Annoying Duck</h1>
-    <p>Click to make the duck appear!</p>
-    <button id="quackBtn">QUACK!</button>
-    <button id="toggleBtn">Toggle Duck</button>
+    <div class="container">
+        <div class="header">
+            <h1>Annoying Duck</h1>
+            <div class="subtitle">Focus Monitor Extension</div>
+        </div>
+
+        <div class="status-card">
+            <div class="status-row">
+                <div class="status-label">
+                    <span id="eegIndicator" class="status-indicator disconnected"></span>
+                    <span>EEG Status</span>
+                </div>
+                <span id="eegStatus">Disconnected</span>
+            </div>
+            <div class="status-row">
+                <div class="status-label">
+                    <span id="backendIndicator" class="status-indicator disconnected"></span>
+                    <span>Backend</span>
+                </div>
+                <span id="backendStatus">Disconnected</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="reconnectBtn" class="btn-reconnect">Reconnect Backend</button>
+            <button id="quackBtn" class="btn-primary">QUACK!</button>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-title">Settings</div>
+            <div class="setting-item">
+                <div class="setting-label">
+                    <span>Show Duck</span>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" id="showDuckToggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="setting-item">
+                <div class="setting-label">
+                    <span>Always Spawn Duck</span>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" id="alwaysSpawnToggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="keyboard-shortcuts">
+            <div class="shortcuts-title">Keyboard Shortcuts</div>
+            <div class="shortcut">
+                <span>Previous position</span>
+                <span><span class="key">Alt</span> + <span class="key">←</span></span>
+            </div>
+            <div class="shortcut">
+                <span>Next position</span>
+                <span><span class="key">Alt</span> + <span class="key">→</span></span>
+            </div>
+            <div class="shortcut">
+                <span>Show all positions</span>
+                <span><span class="key">Alt</span> + <span class="key">L</span></span>
+            </div>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+    </div>
+
     <script src="dist/popup.js"></script>
 </body>
 

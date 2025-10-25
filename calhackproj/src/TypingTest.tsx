@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { fetchMuseMetrics, museApiRequest } from "./utils/portDiscovery";
 import "./TypingTest.css";
 
 interface Metrics {
@@ -48,8 +49,7 @@ function TypingTest() {
 
     const metricsInterval = setInterval(async () => {
       try {
-        const response = await fetch("http://localhost:5001/api/metrics");
-        const data = await response.json();
+        const data = await fetchMuseMetrics();
         setMetrics(data);
         setFocusScores((prev) => [...prev, data.focus_score]);
       } catch (error) {
@@ -79,7 +79,7 @@ function TypingTest() {
 
   async function fetchTestWords() {
     try {
-      const response = await fetch("http://localhost:5001/api/typing-words");
+      const response = await museApiRequest("/api/typing-words");
       const data = await response.json();
       setTestText(data.words);
     } catch (error) {
@@ -112,7 +112,7 @@ function TypingTest() {
 
   async function useFocusBaseline() {
     try {
-      const response = await fetch("http://localhost:5001/api/calibrate-with-score", {
+      const response = await museApiRequest("/api/calibrate-with-score", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ focus_score: avgFocus }),

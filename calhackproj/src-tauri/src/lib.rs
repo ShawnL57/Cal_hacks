@@ -12,6 +12,9 @@ use futures_util::{SinkExt, StreamExt};
 use tokio::sync::broadcast;
 use tower_http::cors::{CorsLayer, Any};
 
+// Global port configuration
+const MUSE_API_PORTS: &[u16] = &[5000, 5001, 5002, 5003, 5004, 5005];
+
 // Data structures
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DuckMessage {
@@ -19,6 +22,18 @@ pub struct DuckMessage {
     pub timestamp: String,
     #[serde(rename = "type")]
     pub msg_type: String,
+    pub focus_state: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MuseMetrics {
+    pub attention: String,
+    pub focus_score: f64,
+    pub brain_state: String,
+    pub head_orientation: String,
+    pub heart_rate: f64,
+    pub movement_intensity: f64,
+    pub theta_beta_ratio: f64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -36,6 +51,10 @@ pub struct AppState {
     pub message_count: Arc<Mutex<u32>>,
     pub tauri_handle: Arc<Mutex<Option<tauri::AppHandle>>>,
     pub python_process: Arc<Mutex<Option<Child>>>,
+    pub last_focus_state: Arc<Mutex<Option<String>>>,
+    pub last_state_change: Arc<Mutex<Option<std::time::Instant>>>,
+    pub muse_connected: Arc<Mutex<bool>>,
+    pub consecutive_failures: Arc<Mutex<u32>>,
 }
 
 // Tauri commands
@@ -101,6 +120,7 @@ async fn handle_websocket(socket: WebSocket, state: AppState) {
         message: "Connected to Duck Controller!".to_string(),
         timestamp: chrono::Utc::now().to_rfc3339(),
         msg_type: "connection".to_string(),
+        focus_state: None,
     };
 
     if sender
@@ -145,6 +165,208 @@ async fn health_check() -> impl IntoResponse {
         "status": "running",
         "service": "Duck Controller - Tauri Backend"
     }))
+}
+
+// Discover which port the Muse API is running on
+async fn discover_muse_port(client: &reqwest::Client) -> Option<u16> {
+    for &port in MUSE_API_PORTS {
+        let url = format!("http://localhost:{}/api/metrics", port);
+        if let Ok(response) = client.get(&url).send().await {
+            if response.status().is_success() {
+                println!("✅ Found Muse API on port {}", port);
+                return Some(port);
+            }
+        }
+    }
+    None
+}
+
+// Background task to monitor Muse metrics and send focus state changes
+async fn monitor_muse_metrics(state: AppState) {
+    let client = reqwest::Client::new();
+    let mut last_connection_message_sent = false;
+    let mut muse_port: Option<u16> = None;
+
+    loop {
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+        // Discover port if not found
+        if muse_port.is_none() {
+            muse_port = discover_muse_port(&client).await;
+            if muse_port.is_none() {
+                handle_muse_failure(&state, &mut last_connection_message_sent, "API not found on any port").await;
+                continue;
+            }
+        }
+
+        // Fetch metrics from Muse backend
+        let url = format!("http://localhost:{}/api/metrics", muse_port.unwrap());
+        match client.get(&url).send().await {
+            Ok(response) => {
+                // Check if response is successful (not 404)
+                if response.status().is_success() {
+                    if let Ok(metrics) = response.json::<MuseMetrics>().await {
+                        // Mark as connected
+                        {
+                            let mut connected = state.muse_connected.lock().unwrap();
+                            let mut failures = state.consecutive_failures.lock().unwrap();
+
+                            if !*connected {
+                                println!("✅ Muse EEG connected!");
+                                *connected = true;
+                                *failures = 0;
+                                last_connection_message_sent = false;
+
+                                // Send connection status message
+                                let conn_msg = DuckMessage {
+                                    message: "EEG Connected".to_string(),
+                                    timestamp: chrono::Utc::now().to_rfc3339(),
+                                    msg_type: "connection_status".to_string(),
+                                    focus_state: None,
+                                };
+
+                                if let Some(app) = state.tauri_handle.lock().unwrap().as_ref() {
+                                    let _ = app.emit("duck-message", conn_msg.clone());
+                                }
+                                let _ = state.ws_tx.send(conn_msg);
+                            }
+                        }
+
+                        let current_state = metrics.attention.clone();
+
+                        println!("🧠 Current attention state: {} (focus_score: {:.2})",
+                                 current_state, metrics.focus_score);
+
+                        let mut should_send_message = false;
+                        let mut message_to_send: Option<DuckMessage> = None;
+
+                        {
+                            let mut last_state = state.last_focus_state.lock().unwrap();
+                            let mut last_change = state.last_state_change.lock().unwrap();
+
+                            // Check if state has changed
+                            let state_changed = match last_state.as_ref() {
+                                Some(prev) => prev != &current_state,
+                                None => true,
+                            };
+
+                            if state_changed {
+                                // State changed, reset timer
+                                println!("🔄 State changed to: {}", current_state);
+                                *last_state = Some(current_state.clone());
+                                *last_change = Some(std::time::Instant::now());
+                            } else if let Some(change_time) = *last_change {
+                                // State has been stable, check if 2 seconds have passed
+                                let elapsed = change_time.elapsed();
+
+                                if elapsed.as_secs() >= 2 {
+                                    // Send message for this state
+                                    let focus_state = if current_state.to_lowercase().contains("unfocused")
+                                        || current_state.to_lowercase().contains("low") {
+                                        "unfocused"
+                                    } else {
+                                        "focused"
+                                    };
+
+                                    println!("⏰ State stable for 2s, mapped to: {}", focus_state);
+
+                                    let message = if focus_state == "unfocused" {
+                                        "⚠️ Distraction detected! Duck spawned.".to_string()
+                                    } else {
+                                        "✅ Focus restored!".to_string()
+                                    };
+
+                                    message_to_send = Some(DuckMessage {
+                                        message,
+                                        timestamp: chrono::Utc::now().to_rfc3339(),
+                                        msg_type: "focus_state_change".to_string(),
+                                        focus_state: Some(focus_state.to_string()),
+                                    });
+
+                                    should_send_message = true;
+
+                                    // Reset timer so we don't send duplicate messages
+                                    *last_change = None;
+                                } else {
+                                    println!("⏳ State stable, waiting... ({:.1}s elapsed)", elapsed.as_secs_f32());
+                                }
+                            }
+                        }
+
+                        if should_send_message {
+                            if let Some(msg) = message_to_send {
+                                println!("📤 Sending focus state message: {:?}", msg);
+
+                                // Increment counter
+                                {
+                                    let mut count = state.message_count.lock().unwrap();
+                                    *count += 1;
+                                }
+
+                                // Emit to Tauri frontend
+                                if let Some(app) = state.tauri_handle.lock().unwrap().as_ref() {
+                                    let _ = app.emit("duck-message", msg.clone());
+                                }
+
+                                // Broadcast to WebSocket clients (browser extension)
+                                let _ = state.ws_tx.send(msg);
+                            }
+                        }
+                    } else {
+                        // JSON parsing failed - API might not be ready
+                        handle_muse_failure(&state, &mut last_connection_message_sent, "Invalid response from Muse API").await;
+                    }
+                } else {
+                    // Non-200 status - port might have changed
+                    println!("⚠️ Lost connection, rediscovering port...");
+                    muse_port = None;
+                    handle_muse_failure(&state, &mut last_connection_message_sent, "Connection lost").await;
+                }
+            }
+            Err(_) => {
+                // Connection error - port might have changed
+                println!("⚠️ Connection error, rediscovering port...");
+                muse_port = None;
+                handle_muse_failure(&state, &mut last_connection_message_sent, "Connection error").await;
+            }
+        }
+    }
+}
+
+async fn handle_muse_failure(state: &AppState, last_message_sent: &mut bool, reason: &str) {
+    let mut connected = state.muse_connected.lock().unwrap();
+    let mut failures = state.consecutive_failures.lock().unwrap();
+
+    *failures += 1;
+
+    // Only mark as disconnected and send message after 5 consecutive failures
+    // This prevents flapping on temporary network issues
+    if *failures >= 5 && *connected {
+        println!("❌ Muse EEG disconnected: {}", reason);
+        *connected = false;
+        *last_message_sent = false;
+
+        // Clear focus state since we can't monitor anymore
+        *state.last_focus_state.lock().unwrap() = None;
+        *state.last_state_change.lock().unwrap() = None;
+    }
+
+    // Send disconnection message only once
+    if !*connected && !*last_message_sent {
+        let disconn_msg = DuckMessage {
+            message: "EEG Disconnected - Please connect your Muse headset".to_string(),
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            msg_type: "connection_status".to_string(),
+            focus_state: None,
+        };
+
+        if let Some(app) = state.tauri_handle.lock().unwrap().as_ref() {
+            let _ = app.emit("duck-message", disconn_msg.clone());
+        }
+        let _ = state.ws_tx.send(disconn_msg);
+
+        *last_message_sent = true;
+    }
 }
 
 // Launch Python backend subprocess
@@ -200,7 +422,17 @@ async fn start_servers(app_handle: tauri::AppHandle) {
         message_count: Arc::new(Mutex::new(0)),
         tauri_handle: Arc::new(Mutex::new(Some(app_handle.clone()))),
         python_process: Arc::new(Mutex::new(python_process)),
+        last_focus_state: Arc::new(Mutex::new(None)),
+        last_state_change: Arc::new(Mutex::new(None)),
+        muse_connected: Arc::new(Mutex::new(false)),
+        consecutive_failures: Arc::new(Mutex::new(0)),
     };
+
+    // Start Muse monitoring task
+    let monitor_state = state.clone();
+    tokio::spawn(async move {
+        monitor_muse_metrics(monitor_state).await;
+    });
 
     // Make state available to Tauri commands
     app_handle.manage(state.clone());
