@@ -37,8 +37,7 @@ interface AttentionData {
 }
 
 class AnnoyingDuck {
-    private duckVisible: boolean = false;
-    private duckElement: HTMLDivElement | null = null;
+    private duckElements: HTMLDivElement[] = []; // Track multiple ducks
     private config: DuckConfig = {
         size: 100,
         bounceHeight: 20,
@@ -175,17 +174,13 @@ class AnnoyingDuck {
     }
 
     private createDuck(): void {
-        if (this.duckElement) return;
-
-        // Pick a random side
+        // Always create a new duck - no limit!
         const side = this.getRandomSide();
         console.log(`[DUCK] Spawning from: ${side}`);
 
-        // Create the animation for this side
         const animationName = this.createDiagonalAnimation(side);
-
-        this.duckElement = document.createElement('div');
-        this.duckElement.id = 'annoying-duck';
+        const duckElement = document.createElement('div');
+        duckElement.className = 'annoying-duck';
 
         // Create an img element for the walking duck GIF
         const duckImg = document.createElement('img');
@@ -196,8 +191,8 @@ class AnnoyingDuck {
             object-fit: contain;
         `;
 
-        this.duckElement.appendChild(duckImg);
-        this.duckElement.style.cssText = `
+        duckElement.appendChild(duckImg);
+        duckElement.style.cssText = `
             position: fixed;
             left: 0;
             top: 0;
@@ -209,49 +204,21 @@ class AnnoyingDuck {
             user-select: none;
         `;
 
-        // Listen for animation end - but DON'T auto-restart
-        // Duck should only spawn when backend sends unfocused message
-        this.duckElement.addEventListener('animationend', () => {
-            console.log('[DUCK] Animation ended');
-            // Just remove the duck after animation, don't restart
-            this.removeDuck();
+        // Remove this specific duck after animation
+        duckElement.addEventListener('animationend', () => {
+            console.log('[DUCK] Animation ended, removing duck');
+            duckElement.remove();
+            const index = this.duckElements.indexOf(duckElement);
+            if (index > -1) this.duckElements.splice(index, 1);
         });
 
-        document.body.appendChild(this.duckElement);
-        this.duckVisible = true;
+        document.body.appendChild(duckElement);
+        this.duckElements.push(duckElement);
     }
 
-    private removeDuck(): void {
-        if (this.duckElement) {
-            this.duckElement.remove();
-            this.duckElement = null;
-            this.duckVisible = false;
-        }
-    }
-
-    private animateQuack(): void {
-        if (!this.duckElement) {
-            this.createDuck();
-        }
-
-        if (this.duckElement) {
-            const originalSize = this.config.size;
-            this.duckElement.style.fontSize = `${originalSize * 1.5}px`;
-
-            setTimeout(() => {
-                if (this.duckElement) {
-                    this.duckElement.style.fontSize = `${originalSize}px`;
-                }
-            }, 200);
-        }
-    }
-
-    private toggleDuck(): void {
-        if (this.duckVisible) {
-            this.removeDuck();
-        } else {
-            this.createDuck();
-        }
+    private removeAllDucks(): void {
+        this.duckElements.forEach(duck => duck.remove());
+        this.duckElements = [];
     }
 
     private setupMessageListener(): void {
@@ -260,26 +227,23 @@ class AnnoyingDuck {
                 try {
                     switch (message.action) {
                         case 'quack':
-                            // Create duck if not visible, then animate
-                            if (!this.duckVisible) {
-                                this.createDuck();
-                            }
-                            this.animateQuack();
+                            // Always create a new duck
+                            this.createDuck();
                             sendResponse({
                                 success: true,
                                 action: 'quack',
                                 eegConnected: this.isEEGConnected,
                                 backendConnected: this.isBackendConnected,
-                                visible: this.duckVisible
+                                visible: this.duckElements.length > 0
                             });
                             break;
                         case 'set_duck_visible':
                             this.showDuckEnabled = message.value ?? true;
                             this.saveSettings();
 
-                            // If disabling, remove the duck immediately
+                            // If disabling, remove all ducks immediately
                             if (!this.showDuckEnabled) {
-                                this.removeDuck();
+                                this.removeAllDucks();
                             }
 
                             console.log(`[Settings] Show Duck: ${this.showDuckEnabled ? 'ON' : 'OFF'}`);
@@ -471,7 +435,7 @@ class AnnoyingDuck {
                 this.isEEGConnected = false;
                 this.updateStatusIndicator();
                 this.showNotification('EEG Disconnected - Please connect your Muse headset', 10000);
-                this.removeDuck();
+                this.removeAllDucks();
             }
             return;
         }
@@ -494,18 +458,13 @@ class AnnoyingDuck {
             this.isUserFocused = false;
             this.saveCurrentScrollPosition(message.message);
 
-            // Show duck when unfocused
-            if (!this.duckVisible) {
-                this.createDuck();
-            } else {
-                this.animateQuack();
-            }
-
+            // Always spawn a new duck
+            this.createDuck();
             this.showNotification(message.message);
         } else if (message.focus_state === 'focused') {
-            console.log('User focused - removing duck');
+            console.log('User focused - removing all ducks');
             this.isUserFocused = true;
-            this.removeDuck();
+            this.removeAllDucks();
             this.showNotification('Focus restored!');
         }
     }
