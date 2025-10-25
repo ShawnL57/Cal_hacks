@@ -103,8 +103,64 @@ TAURI_URL = "http://localhost:3030/api/message"
 last_tauri_send_time = 0
 tauri_send_interval = 0.5  # Send to Tauri every 500ms
 
+# Attention tracking for duck messages (5-second window)
+attention_history = deque(maxlen=50)  # 5 seconds at 10 samples/sec
+last_duck_sent_time = 0
+duck_cooldown = 30  # Don't send another duck for 30 seconds
+
+DUCK_MESSAGES = [
+    "Hey! Stay focused! 🦆",
+    "Quack! Pay attention! 🦆",
+    "Focus up! Your brain is wandering! 🦆",
+    "Getting distracted? Back to work! 🦆",
+    "Losing focus! Time to concentrate! 🦆",
+]
+
+def check_and_send_duck_alert():
+    """Check 5-second attention window and send duck if unfocused"""
+    global last_duck_sent_time
+
+    # Need at least 30 samples (3 seconds of data)
+    if len(attention_history) < 30:
+        return
+
+    # Check cooldown
+    current_time = time.time()
+    if current_time - last_duck_sent_time < duck_cooldown:
+        return
+
+    # Count unfocused states (distracted + drowsy) in last 5 seconds
+    unfocused_count = sum(1 for state in attention_history if state in ['distracted', 'drowsy'])
+    total_count = len(attention_history)
+    unfocused_ratio = unfocused_count / total_count
+
+    # If >70% of last 5 seconds is unfocused, send duck alert
+    if unfocused_ratio > 0.7:
+        try:
+            import random
+            message = random.choice(DUCK_MESSAGES)
+
+            payload = {
+                "message": message,
+                "timestamp": datetime.now().isoformat(),
+                "type": "duck_alert",
+                "attention_data": {
+                    "unfocused_ratio": unfocused_ratio,
+                    "current_state": current_metrics['attention'],
+                    "focus_score": current_metrics['focus_score']
+                }
+            }
+
+            response = requests.post(TAURI_URL, json=payload, timeout=1)
+            if response.status_code == 200:
+                last_duck_sent_time = current_time
+                print(f"🦆 DUCK ALERT SENT! Unfocused: {unfocused_ratio:.1%}")
+        except Exception as e:
+            # Silently fail - Tauri might not be running
+            pass
+
 def send_to_tauri():
-    """Send current metrics to Tauri frontend"""
+    """Send current metrics to Tauri frontend (for dashboard only)"""
     global last_tauri_send_time
 
     current_time = time.time()
@@ -127,6 +183,11 @@ def send_to_tauri():
         response = requests.post(TAURI_URL, json=payload, timeout=1)
         if response.status_code == 200:
             last_tauri_send_time = current_time
+
+        # Track attention history and check for duck alert
+        attention_history.append(current_metrics['attention'])
+        check_and_send_duck_alert()
+
     except Exception as e:
         # Silently fail - Tauri might not be running yet
         pass

@@ -8,9 +8,16 @@ console.log('🦆 Duck Controller content script loaded!');
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'DUCK_MESSAGE') {
-    console.log('🦆 Received duck message:', message.data);
-    displayDuckMessage(message.data);
-    sendResponse({ received: true });
+    // Only show duck alerts (when user is unfocused)
+    // Ignore regular brain_metrics messages
+    if (message.data.type === 'duck_alert') {
+      console.log('🦆 DUCK ALERT! User is unfocused:', message.data);
+      displayDuckMessage(message.data);
+      sendResponse({ received: true });
+    } else {
+      // Ignore regular metrics messages (they go to Tauri dashboard)
+      sendResponse({ received: true, ignored: true });
+    }
   }
 });
 
