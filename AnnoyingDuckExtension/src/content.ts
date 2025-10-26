@@ -825,6 +825,65 @@ class AnnoyingDuck {
 
         document.body.appendChild(this.statusIndicator);
         this.updateStatusIndicator();
+        this.createNavigationButtons();
+    }
+
+    private createNavigationButtons(): void {
+        const navContainer = document.createElement('div');
+        navContainer.style.cssText = `
+            position: fixed;
+            top: 60px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 8px;
+            border-radius: 8px;
+            z-index: 999997;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        `;
+
+        const btnStyle = `
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        `;
+
+        const prevBtn = document.createElement('button');
+        prevBtn.textContent = '← Prev';
+        prevBtn.style.cssText = btnStyle;
+        prevBtn.onclick = () => this.navigateToPreviousPosition();
+        prevBtn.onmouseenter = () => prevBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+        prevBtn.onmouseleave = () => prevBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+
+        const allBtn = document.createElement('button');
+        allBtn.textContent = 'View All';
+        allBtn.style.cssText = btnStyle;
+        allBtn.onclick = () => this.showPositionsList();
+        allBtn.onmouseenter = () => allBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+        allBtn.onmouseleave = () => allBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+
+        const nextBtn = document.createElement('button');
+        nextBtn.textContent = 'Next →';
+        nextBtn.style.cssText = btnStyle;
+        nextBtn.onclick = () => this.navigateToNextPosition();
+        nextBtn.onmouseenter = () => nextBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+        nextBtn.onmouseleave = () => nextBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+
+        navContainer.appendChild(prevBtn);
+        navContainer.appendChild(allBtn);
+        navContainer.appendChild(nextBtn);
+        document.body.appendChild(navContainer);
     }
 
     private updateStatusIndicator(): void {
