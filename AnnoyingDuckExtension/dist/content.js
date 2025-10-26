@@ -19,6 +19,12 @@ class AnnoyingDuck {
         this.showDuckEnabled = true; // Setting: whether duck can be shown at all
         this.attentionHistory = []; // Last 2 minutes of attention data
         this.MAX_HISTORY_DURATION = 120000; // 2 minutes in ms
+        // Sliding window for sustained focus detection
+        this.focusWindow = [];
+        this.WINDOW_MS = 3000; // 3 second sustained window
+        this.FOCUS_THRESHOLD = 0.6; // Below this = unfocused
+        this.lastFocusDropLoggedAt = 0;
+        this.LOG_DEBOUNCE_MS = 5000; // Don't log same drop multiple times
         this.loadSettings();
         this.init();
         this.loadScrollPositions();
@@ -301,6 +307,118 @@ class AnnoyingDuck {
         // Remove data older than 2 minutes
         const cutoff = now - this.MAX_HISTORY_DURATION;
         this.attentionHistory = this.attentionHistory.filter(d => d.timestamp > cutoff);
+        // Also add to sliding focus window for sustained detection
+        this.updateFocusWindow(focusScore);
+    }
+    updateFocusWindow(focusScore) {
+        const now = Date.now();
+        this.focusWindow.push({ score: focusScore, ts: now });
+        // Remove data older than WINDOW_MS
+        const cutoff = now - this.WINDOW_MS;
+        this.focusWindow = this.focusWindow.filter(f => f.ts >= cutoff);
+        // Check for sustained focus drop
+        this.checkSustainedFocusDrop();
+    }
+    checkSustainedFocusDrop() {
+        if (this.focusWindow.length === 0)
+            return;
+        // Calculate average focus over the window
+        const avgFocus = this.focusWindow.reduce((sum, f) => sum + f.score, 0) / this.focusWindow.length;
+        // If sustained drop below threshold
+        if (avgFocus < this.FOCUS_THRESHOLD) {
+            const now = Date.now();
+            // Debounce to avoid duplicate logs
+            if (now - this.lastFocusDropLoggedAt < this.LOG_DEBOUNCE_MS)
+                return;
+            const scrollPercent = this.getScrollPercent();
+            if (scrollPercent !== null) {
+                this.logFocusDrop(scrollPercent);
+                this.spawnDuckCue();
+                this.lastFocusDropLoggedAt = now;
+                console.log(`[SUSTAINED DROP] Avg focus: ${(avgFocus * 100).toFixed(1)}% over ${this.WINDOW_MS}ms at scroll ${(scrollPercent * 100).toFixed(1)}%`);
+            }
+        }
+    }
+    getScrollPercent() {
+        try {
+            // Try to find PDF iframe first
+            const iframes = document.querySelectorAll('iframe');
+            for (const iframe of Array.from(iframes)) {
+                try {
+                    if (iframe.contentDocument) {
+                        const viewerContainer = iframe.contentDocument.getElementById('viewerContainer');
+                        if (viewerContainer) {
+                            const scrollTop = viewerContainer.scrollTop;
+                            const scrollHeight = viewerContainer.scrollHeight - viewerContainer.clientHeight;
+                            if (scrollHeight > 0) {
+                                return scrollTop / scrollHeight;
+                            }
+                        }
+                    }
+                }
+                catch (e) {
+                    // Cross-origin iframe, skip
+                }
+            }
+        }
+        catch (e) {
+            console.error('[Scroll] Error accessing iframe:', e);
+        }
+        // Fallback to regular page scroll
+        try {
+            const el = document.scrollingElement || document.documentElement;
+            const scrollHeight = el.scrollHeight - el.clientHeight;
+            if (scrollHeight > 0) {
+                return el.scrollTop / scrollHeight;
+            }
+        }
+        catch (e) {
+            console.error('[Scroll] Error accessing page scroll:', e);
+        }
+        return null;
+    }
+    logFocusDrop(scrollPercent) {
+        const position = {
+            url: window.location.href,
+            scrollY: window.scrollY,
+            timestamp: new Date().toISOString(),
+            message: `Focus drop at ${(scrollPercent * 100).toFixed(1)}% scroll`
+        };
+        this.scrollPositions.push(position);
+        this.currentPositionIndex = this.scrollPositions.length - 1;
+        this.saveScrollPositions();
+        console.log('[FOCUS DROP LOGGED]', position);
+    }
+    spawnDuckCue() {
+        const cue = document.createElement('div');
+        cue.innerText = '🦆';
+        cue.style.cssText = `
+            position: fixed;
+            bottom: 10%;
+            left: 5%;
+            font-size: 32px;
+            z-index: 2147483647;
+            opacity: 0.8;
+            pointer-events: none;
+            animation: fadeInOut 3s ease-in-out;
+        `;
+        // Add fadeInOut animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeInOut {
+                0% { opacity: 0; transform: scale(0.5); }
+                20% { opacity: 0.8; transform: scale(1); }
+                80% { opacity: 0.8; transform: scale(1); }
+                100% { opacity: 0; transform: scale(0.5); }
+            }
+        `;
+        document.head.appendChild(style);
+        document.body.appendChild(cue);
+        setTimeout(() => {
+            if (document.body.contains(cue)) {
+                cue.remove();
+            }
+        }, 3000);
     }
     connectWebSocket() {
         console.log(`[WebSocket] Attempting connection to ${this.WEBSOCKET_URL}`);
