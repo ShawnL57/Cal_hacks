@@ -1,5 +1,5 @@
 interface Message {
-    action: 'quack' | 'set_duck_visible' | 'reconnect' | 'get_status' | 'set_always_spawn' | 'scroll_prev' | 'scroll_next' | 'scroll_show_all';
+    action: 'quack' | 'set_duck_visible' | 'reconnect' | 'get_status' | 'set_always_spawn' | 'scroll_prev' | 'scroll_next' | 'scroll_show_all' | 'test_distraction';
     value?: boolean;
 }
 
@@ -32,6 +32,7 @@ const alwaysSpawnToggle = document.getElementById('alwaysSpawnToggle') as HTMLIn
 const prevPositionBtn = document.getElementById('prevPositionBtn') as HTMLButtonElement;
 const nextPositionBtn = document.getElementById('nextPositionBtn') as HTMLButtonElement;
 const showAllPositionsBtn = document.getElementById('showAllPositionsBtn') as HTMLButtonElement;
+const testDistractionBtn = document.getElementById('testDistractionBtn') as HTMLButtonElement;
 const statusMessage = document.getElementById('statusMessage') as HTMLDivElement;
 const eegIndicator = document.getElementById('eegIndicator') as HTMLSpanElement;
 const eegStatus = document.getElementById('eegStatus') as HTMLSpanElement;
@@ -226,7 +227,7 @@ async function loadStatus(): Promise<void> {
     }
 }
 
-async function sendMessage(action: 'quack' | 'set_duck_visible' | 'reconnect' | 'set_always_spawn' | 'scroll_prev' | 'scroll_next' | 'scroll_show_all', value?: boolean): Promise<void> {
+async function sendMessage(action: 'quack' | 'set_duck_visible' | 'reconnect' | 'set_always_spawn' | 'scroll_prev' | 'scroll_next' | 'scroll_show_all' | 'test_distraction', value?: boolean): Promise<void> {
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
@@ -373,6 +374,10 @@ nextPositionBtn?.addEventListener('click', () => {
 
 showAllPositionsBtn?.addEventListener('click', () => {
     sendMessage('scroll_show_all');
+});
+
+testDistractionBtn?.addEventListener('click', () => {
+    sendMessage('test_distraction');
 });
 
 // Load status on popup open

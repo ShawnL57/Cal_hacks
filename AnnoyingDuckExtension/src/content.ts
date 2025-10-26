@@ -1,4 +1,4 @@
-type MessageAction = 'quack' | 'set_duck_visible' | 'reconnect' | 'get_status' | 'set_always_spawn' | 'scroll_prev' | 'scroll_next' | 'scroll_show_all';
+type MessageAction = 'quack' | 'set_duck_visible' | 'reconnect' | 'get_status' | 'set_always_spawn' | 'scroll_prev' | 'scroll_next' | 'scroll_show_all' | 'test_distraction';
 
 interface Message {
     action: MessageAction;
@@ -310,6 +310,18 @@ class AnnoyingDuck {
                             break;
                         case 'scroll_show_all':
                             this.showPositionsList();
+                            sendResponse({ success: true });
+                            break;
+                        case 'test_distraction':
+                            // Manually log current position as if distraction was detected
+                            const scrollPercent = this.getScrollPercent();
+                            if (scrollPercent !== null) {
+                                this.logFocusDrop(scrollPercent);
+                                this.spawnDuckCue();
+                                this.showNotification('Test: Position logged at ' + (scrollPercent * 100).toFixed(1) + '% scroll');
+                            } else {
+                                this.showNotification('Test: Unable to get scroll position');
+                            }
                             sendResponse({ success: true });
                             break;
                         default:

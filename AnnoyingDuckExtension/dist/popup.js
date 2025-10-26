@@ -7,6 +7,7 @@ const alwaysSpawnToggle = document.getElementById('alwaysSpawnToggle');
 const prevPositionBtn = document.getElementById('prevPositionBtn');
 const nextPositionBtn = document.getElementById('nextPositionBtn');
 const showAllPositionsBtn = document.getElementById('showAllPositionsBtn');
+const testDistractionBtn = document.getElementById('testDistractionBtn');
 const statusMessage = document.getElementById('statusMessage');
 const eegIndicator = document.getElementById('eegIndicator');
 const eegStatus = document.getElementById('eegStatus');
@@ -317,6 +318,9 @@ nextPositionBtn?.addEventListener('click', () => {
 });
 showAllPositionsBtn?.addEventListener('click', () => {
     sendMessage('scroll_show_all');
+});
+testDistractionBtn?.addEventListener('click', () => {
+    sendMessage('test_distraction');
 });
 // Load status on popup open
 loadStatus();
