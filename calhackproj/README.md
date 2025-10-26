@@ -34,110 +34,77 @@ Browser (Duck Animation)
 - Rust (for Tauri)
 - Chrome browser
 
-## Quick Installation
+## 🚀 Quick Start (2 Commands!)
+
+### 1. One-Time Setup
 
 ```bash
-# Clone and navigate to project
-cd /Users/gary/Merge/Cal_hacks/calhackproj
-
-# Install Python backend dependencies
-cd python-backend && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && cd ..
-
-# Install Tauri app dependencies
-npm install
-
-# Install Chrome extension dependencies
-cd ../AnnoyingDuckExtension && npm install && npm run build && cd ../calhackproj
-
-# Install Muse LSL
-pip install muselsl
+git clone https://github.com/ShawnL57/Cal_hacks.git
+cd Cal_hacks/calhackproj
+./setup.sh
 ```
 
-## Muse 2 EEG Setup
+This will:
+- ✅ Create Python virtual environment
+- ✅ Install all Python dependencies
+- ✅ Install Node.js dependencies
+- ✅ Build Chrome extension
+- ✅ Install Muse LSL tools
+- ✅ Create `.env` template
 
-### 1. Install LSL Library (macOS)
+### 2. Configure API Key
 
+Edit `python-backend/.env` and add your Anthropic API key:
 ```bash
-brew install labstreaminglayer/tap/lsl
+ANTHROPIC_API_KEY=your_actual_api_key_here
 ```
 
-### 2. Find Your Muse Headset
+### 3. Find Your Muse Device
 
 ```bash
-# Set library path
 export DYLD_LIBRARY_PATH=/opt/homebrew/lib
-
-# Discover nearby Muse devices
 muselsl list
-
-# Example output:
-# Found device: Muse-215A
+# Example output: Found device: Muse-215A
 ```
 
-### 3. Start Muse LSL Stream
+### 4. Start Everything with One Command! 🎉
 
 ```bash
-# Stream EEG, PPG (heart rate), Accelerometer, and Gyroscope data
-export DYLD_LIBRARY_PATH=/opt/homebrew/lib
-muselsl stream --name Muse-215A --ppg --acc --gyro
+./start.sh Muse-215A  # Replace with your device name
 ```
 
-**Note:** Replace `Muse-215A` with your device name from the `muselsl list` output.
+This single command starts:
+- 🧠 Muse LSL stream
+- 🐍 Python backend
+- 🖥️ Tauri desktop app
 
-### Common Muse Issues
+Press `CTRL+C` to stop all services.
+
+### 5. Load Chrome Extension
+
+1. Open `chrome://extensions/` in Chrome
+2. Enable **Developer mode** (toggle top-right)
+3. Click **Load unpacked**
+4. Select `AnnoyingDuckExtension/` folder
+5. Open any website and get distracted to see the duck!
+
+---
+
+## Service URLs
+
+When running, the following services will be available:
+
+- **Tauri Dashboard**: http://localhost:1420
+- **Python API**: http://localhost:5001
+- **Python Metrics**: http://localhost:5000
+- **WebSocket Server**: ws://127.0.0.1:3030/ws
+
+## Common Muse Issues
 
 - **Connection fails**: Make sure headset is charged and Bluetooth is enabled
 - **Stream disconnects**: Ensure proper headset fit (all 4 sensors should show good contact)
 - **No data**: Check that LSL library path is set correctly
-
-## Environment Variables
-
-Create `.env` file in `python-backend/`:
-
-```bash
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-```
-
-## Running the Application
-
-### Terminal 1: Start Muse LSL Stream
-
-```bash
-export DYLD_LIBRARY_PATH=/opt/homebrew/lib
-muselsl stream --name Muse-215A --ppg --acc --gyro
-```
-
-### Terminal 2: Start Python Backend
-
-```bash
-cd python-backend
-source venv/bin/activate
-python main.py
-```
-
-The backend will start on:
-- Flask API: http://localhost:5001
-- Python metrics endpoint: http://localhost:5000
-
-### Terminal 3: Start Tauri App
-
-```bash
-cd calhackproj
-npm run tauri dev
-```
-
-The Tauri app will:
-- Start frontend: http://localhost:1420
-- Start HTTP server: http://127.0.0.1:3030
-- Start WebSocket server: ws://127.0.0.1:3030/ws
-
-### Step 4: Load Chrome Extension
-
-1. Open Chrome and navigate to `chrome://extensions/`
-2. Enable **Developer mode** (toggle in top-right)
-3. Click **Load unpacked**
-4. Select the `AnnoyingDuckExtension` folder
-5. Open any website (e.g., google.com)
+- **Device not found**: Run `muselsl list` to verify device name
 
 ## How It Works
 
