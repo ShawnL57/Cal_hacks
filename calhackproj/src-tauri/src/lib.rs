@@ -458,11 +458,11 @@ async fn handle_muse_failure(state: &AppState, last_message_sent: &mut bool, rea
 fn launch_python_backend() -> Result<Child, std::io::Error> {
     println!("🐍 Launching Python backend...");
 
-    // Find python3 executable
+    // Find python executable
     let python_cmd = if cfg!(target_os = "windows") {
         "python"
     } else {
-        "python3"
+        "python"
     };
 
     // Get the path to python-backend directory

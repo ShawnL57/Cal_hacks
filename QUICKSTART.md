@@ -11,7 +11,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 # Install Node.js from https://nodejs.org/ (if not installed)
 
 # Install Python 3 (if not installed - usually pre-installed on macOS)
-python3 --version
+python --version
 ```
 
 ### Step 2: Start the Application
@@ -91,7 +91,7 @@ cd browser-extension
 
 # Or if you have Python PIL:
 pip3 install pillow
-python3 create_icons.py
+python create_icons.py
 ```
 
 ---

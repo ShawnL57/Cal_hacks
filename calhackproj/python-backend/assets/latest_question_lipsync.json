@@ -1,0 +1,789 @@
+{
+  "audio": "/Users/gary/Debug/Cal_hacks/calhackproj/python-backend/assets/latest_question.mp3",
+  "duration": 5.1634375,
+  "fps": 30,
+  "mouth_shapes": [
+    "neutral",
+    "closed",
+    "open",
+    "pursed",
+    "teeth"
+  ],
+  "timeline": [
+    {
+      "shape": "closed",
+      "start": 0.0,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 0.0333125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 0.066625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 0.0999375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 0.13325,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "open",
+      "start": 0.1665625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "open",
+      "start": 0.199875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "open",
+      "start": 0.2331875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "open",
+      "start": 0.2665,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 0.2998125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 0.333125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 0.3664375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 0.39975,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 0.4330625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 0.466375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 0.4996875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 0.533,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "open",
+      "start": 0.5663125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "open",
+      "start": 0.599625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 0.6329375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 0.66625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 0.6995625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 0.732875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 0.7661875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "open",
+      "start": 0.7995,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "open",
+      "start": 0.8328125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 0.866125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 0.8994375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 0.93275,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 0.9660625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 0.999375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 1.0326875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 1.066,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 1.0993125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 1.132625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 1.1659375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 1.19925,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 1.2325625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 1.265875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 1.2991875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 1.3325,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 1.3658125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 1.399125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 1.4324375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 1.46575,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 1.4990625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 1.532375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 1.5656875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 1.599,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 1.6323125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 1.665625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 1.6989375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 1.73225,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 1.7655625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 1.798875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 1.8321875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 1.8655,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 1.8988125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 1.932125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "open",
+      "start": 1.9654375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "open",
+      "start": 1.99875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "open",
+      "start": 2.0320625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "open",
+      "start": 2.065375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.0986875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.132,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.1653125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.198625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.2319375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.26525,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.2985625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.331875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.3651875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.3985,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "open",
+      "start": 2.4318125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.465125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.4984375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.53175,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.5650625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.598375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.6316875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.665,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.6983125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.731625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 2.7649375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 2.79825,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 2.8315625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 2.864875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.8981875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.9315,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.9648125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 2.998125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 3.0314375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 3.06475,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 3.0980625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 3.131375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 3.1646875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 3.198,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 3.2313125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 3.264625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 3.2979375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 3.33125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 3.3645625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 3.397875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 3.4311875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 3.4645,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 3.4978125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 3.531125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 3.5644375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 3.59775,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 3.6310625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 3.664375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 3.6976875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 3.731,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 3.7643125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 3.797625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 3.8309375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 3.86425,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 3.8975625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 3.930875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 3.9641875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 3.9975,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 4.0308125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 4.064125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 4.0974375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 4.13075,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 4.1640625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 4.197375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 4.2306875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 4.264,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 4.2973125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 4.330625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 4.3639375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 4.39725,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 4.4305625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 4.463875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 4.4971875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 4.5305,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 4.5638125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 4.597125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 4.6304375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 4.66375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 4.6970625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 4.730375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 4.7636875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 4.797,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 4.8303125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 4.863625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 4.8969375,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "teeth",
+      "start": 4.93025,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 4.9635625,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 4.996875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 5.0301875,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 5.0635,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 5.0968125,
+      "duration": 0.0333125
+    },
+    {
+      "shape": "closed",
+      "start": 5.130125,
+      "duration": 0.0333125
+    }
+  ]
+}

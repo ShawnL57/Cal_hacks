@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 Full Muse 2 EEG + Motion Tracking with Real-Time Visualization
 Includes: EEG, PPG (heart rate), Accelerometer, Gyroscope
@@ -6,6 +6,7 @@ Includes: EEG, PPG (heart rate), Accelerometer, Gyroscope
 import os
 import threading
 import time
+import logging
 from pathlib import Path
 from collections import deque
 from flask import Flask, render_template_string, jsonify, request
@@ -26,6 +27,17 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('backend.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
 # Set LSL library path
 os.environ['DYLD_LIBRARY_PATH'] = '/opt/homebrew/lib'
 
@@ -43,7 +55,7 @@ LSL_GYRO_CHUNK = 1
 attention_classifier = AttentionClassifier(sampling_rate=MUSE_SAMPLING_EEG_RATE)
 
 # Initialize screenshot video generator
-screenshot_video_generator = ScreenshotVideoGenerator(interval=30)
+screenshot_video_generator = ScreenshotVideoGenerator(interval=60)
 
 # Global variable to store Flask port
 flask_port = None
@@ -113,8 +125,10 @@ tauri_send_interval = 0.5  # Send to Tauri every 500ms
 # Attention tracking for duck messages (5-second window)
 attention_history = deque(maxlen=50)  # 5 seconds at 10 samples/sec
 last_duck_sent_time = 0
-duck_cooldown = 30  # Don't send another duck for 30 seconds
+duck_cooldown = 1  # Don't send another duck for 30 seconds
 last_focus_state = None  # Track previous focus state to detect transitions
+video_cooldown = 30  # Don't send another video for 30 seconds
+duck_alert_was_sent = False  # Track if duck alert was sent (to trigger video on focus restoration)
 
 DUCK_MESSAGES = [
     "Hey! Stay focused! 🦆",
@@ -124,41 +138,73 @@ DUCK_MESSAGES = [
     "Losing focus! Time to concentrate! 🦆",
 ]
 
+last_sent_time = time.time()
 def send_focus_restoration_video():
-    """Send generated video when user regains focus"""
-    global flask_port
-    video_path = screenshot_video_generator.get_latest_video_path()
-    if not video_path:
-        print("No video available to send")
+    """Send generated video when user regains focus (only once per video)"""
+    global flask_port, last_sent_time
+    if time.time()-last_sent_time < video_cooldown:
+        return
+    last_sent_time = time.time()
+
+    # Check if this video has already been sent
+    if screenshot_video_generator.has_video_been_sent():
+        logger.info("🚫 DUPLICATE VIDEO PREVENTED - This video was already sent, skipping...")
+        if screenshot_video_generator.last_analysis:
+            logger.info(f"   Question: {screenshot_video_generator.last_analysis[:50]}...")
         return
 
-    try:
-        # Use the cached Flask port
-        if flask_port is None:
-            print("Flask port not initialized yet")
-            return
+    logger.info("🎬 FOCUS REGAINED! Attempting to send NEW video...")
+    if screenshot_video_generator.last_analysis:
+        logger.info(f"   Question: {screenshot_video_generator.last_analysis[:50]}...")
 
+    if flask_port is None:
+        logger.error("❌ Flask port not initialized")
+        return
+
+    video_path = screenshot_video_generator.get_latest_video_path()
+
+    # Only send if we have a real generated video
+    if not video_path:
+        logger.warning("⚠️ No generated video available yet, skipping video send")
+        return
+
+    # Mark video as sent BEFORE attempting to send to prevent duplicates
+    # Even if the send fails, we don't want to retry the same video
+    screenshot_video_generator.mark_video_as_sent()
+
+    try:
         filename = Path(video_path).name
         video_url = f'http://localhost:{flask_port}/video/{filename}'
 
-        requests.post('http://localhost:3030/api/video', json={
+        response = requests.post('http://localhost:3030/api/video', json={
             'video_url': video_url,
             'timestamp': datetime.now().isoformat()
         }, timeout=2)
-        print(f"Focus restored - sent video: {video_url}")
+
+        logger.info(f"✅ Video sent: {video_url} (status: {response.status_code})")
     except Exception as e:
-        print(f"Error sending focus restoration video: {e}")
+        logger.error(f"❌ Error sending focus restoration video: {e}")
+        logger.error("   (Video marked as sent anyway to prevent duplicate attempts)")
 
 def check_and_send_duck_alert():
-    """Check 5-second attention window and send duck if unfocused"""
-    global last_duck_sent_time
+    """
+    Check 5-second attention window and send duck if unfocused, send video on focus restoration
+
+    Flow:
+    1. User distracted >70% for 5 seconds → Duck spawns
+    2. User regains focus → Video plays (only once per duck spawn)
+    3. Requires minimum 5 seconds of distraction before ANY video plays
+    """
+    global last_duck_sent_time, duck_alert_was_sent, last_focus_state
 
     # Need at least 30 samples (3 seconds of data)
     if len(attention_history) < 30:
         return
 
-    # Check cooldown
     current_time = time.time()
+    current_state = current_metrics['attention']
+
+    # Check duck cooldown
     if current_time - last_duck_sent_time < duck_cooldown:
         return
 
@@ -167,8 +213,12 @@ def check_and_send_duck_alert():
     total_count = len(attention_history)
     unfocused_ratio = unfocused_count / total_count
 
+    # Calculate how many seconds of distraction
+    unfocused_seconds = (unfocused_count / 10)  # 10 samples per second
+
     # If >70% of last 5 seconds is unfocused, send duck alert
     if unfocused_ratio > 0.7:
+        logger.info(f"⚠️  DISTRACTION DETECTED: {unfocused_seconds:.1f}s of distraction (>70% for 5 seconds)")
         try:
             import random
             message = random.choice(DUCK_MESSAGES)
@@ -187,10 +237,22 @@ def check_and_send_duck_alert():
             response = requests.post(TAURI_URL, json=payload, timeout=1)
             if response.status_code == 200:
                 last_duck_sent_time = current_time
+                duck_alert_was_sent = True  # Set flag to trigger video on focus restoration
+                logger.info(f"🦆 DUCK SPAWNED! ({unfocused_seconds:.1f}s distracted, {unfocused_ratio:.1%} unfocused)")
+                logger.info(f"   📹 Video will play when focus is restored")
                 print(f"🦆 DUCK ALERT SENT! Unfocused: {unfocused_ratio:.1%}")
         except Exception as e:
             # Silently fail - Tauri might not be running
             pass
+    
+    # Check if user regained focus after duck alert was sent (only trigger once per duck spawn)
+    unfocused_count = sum(1 for state in attention_history[:-1] if state in ['distracted', 'drowsy'])
+    total_count = len(attention_history[:-1])
+    if unfocused_count == total_count and current_state in ['focused', 'neutral']:
+        logger.info(f"✨ FOCUS RESTORED after distraction! Triggering video...")
+        logger.info(f"   (User was distracted ≥5 seconds, now focused)")
+        send_focus_restoration_video()
+        return
 
 def send_to_tauri():
     """Send current metrics to Tauri frontend (for dashboard only)"""
@@ -228,10 +290,10 @@ def send_to_tauri():
 def connect_to_streams():
     """Connect to all Muse LSL streams"""
     global inlets
-    print("Looking for Muse streams...")
+    logger.info("🔍 Looking for Muse streams...")
     streams = resolve_streams()
 
-    # All required streams
+    # Required streams (EEG is mandatory, others are optional)
     stream_map = {
         'EEG': 'EEG',
         'PPG': 'PPG',
@@ -244,12 +306,13 @@ def connect_to_streams():
         matching = [s for s in streams if s.type() == stream_type]
         if matching:
             inlets[buffer_key] = StreamInlet(matching[0])
-            print(f"✓ Connected to {stream_type}")
+            logger.info(f"✅ Connected to {stream_type}")
             connected_count += 1
         else:
-            print(f"✗ Could not find {stream_type} stream")
+            logger.warning(f"❌ Could not find {stream_type} stream")
 
-    return connected_count == len(stream_map)
+    # Only require EEG to be connected
+    return 'EEG' in inlets
 
 def detect_head_orientation():
     """Detect head orientation from accelerometer + gyroscope data"""
@@ -470,9 +533,11 @@ def stream_eeg():
                         # Detect focus state transitions
                         global last_focus_state
                         current_state = current_metrics['attention']
-                        if last_focus_state and last_focus_state in ['distracted', 'drowsy'] and current_state in ['focused', 'neutral']:
-                            # User regained focus!
-                            send_focus_restoration_video()
+
+                        # Log state changes
+                        if last_focus_state != current_state:
+                            logger.info(f"🔄 State transition: {last_focus_state} → {current_state}")
+
                         last_focus_state = current_state
 
                         # Send metrics to Tauri frontend
@@ -639,8 +704,8 @@ def get_ppg_plot():
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(
-        x=timestamps, y=list(data_buffers['PPG']['PPG']),
-        mode='lines', name='PPG',
+        x=timestamps, y=list(data_buffers['PPG']['PPG1']),
+        mode='lines', name='PPG1',
         line=dict(color='#FF1493', width=2),
         fill='tozeroy'
     ))
@@ -1506,36 +1571,38 @@ def find_available_port():
 def start_server():
     global flask_port
     flask_port = find_available_port()
-    print("\n" + "="*70)
-    print("  🧠  MUSE 2 FULL SYSTEM MONITOR")
-    print("="*70)
-    print(f"🌐 Local access:    http://localhost:{flask_port}")
+    logger.info("\n" + "="*70)
+    logger.info("  🧠  MUSE 2 FULL SYSTEM MONITOR")
+    logger.info("="*70)
+    logger.info(f"🌐 Local access:    http://localhost:{flask_port}")
     import socket
     try:
         hostname = socket.gethostname()
         local_ip = socket.gethostbyname(hostname)
         if local_ip != '127.0.0.1':
-            print(f"🌐 Network access:  http://{local_ip}:{flask_port}")
+            logger.info(f"🌐 Network access:  http://{local_ip}:{flask_port}")
     except:
         pass
-    print("📊 Monitoring: EEG + PPG + Accelerometer + Gyroscope")
-    print("="*70 + "\n")
+    logger.info("📊 Monitoring: EEG + PPG + Accelerometer + Gyroscope")
+    logger.info("="*70 + "\n")
     app.run(debug=False, use_reloader=False, host='0.0.0.0', port=flask_port, threaded=True)
 
 if __name__ == '__main__':
+    logger.info("🚀 Starting Muse 2 Full System Monitor...")
     streaming = True
 
     if not connect_to_streams():
-        print("\n❌ ERROR: Could not connect to EEG streams!")
-        print("Please make sure:")
-        print("  1. Your Muse 2 headset is turned on")
-        print("  2. muselsl is streaming (run: muselsl stream)")
-        print("  3. The headset is paired via Bluetooth")
+        logger.error("\n❌ ERROR: Could not connect to EEG streams!")
+        logger.error("Please make sure:")
+        logger.error("  1. Your Muse 2 headset is turned on")
+        logger.error("  2. muselsl is streaming (run: muselsl stream)")
+        logger.error("  3. The headset is paired via Bluetooth")
         exit(1)
 
-    print("✅ All EEG streams connected successfully!\n")
+    logger.info("✅ All EEG streams connected successfully!\n")
 
     # Start streaming threads
+    logger.info("🔧 Starting data streaming threads...")
     threads = [
         ('EEG', stream_eeg),
         ('PPG', stream_ppg),
@@ -1547,11 +1614,16 @@ if __name__ == '__main__':
         t = threading.Thread(target=func, daemon=True, name=name)
         t.start()
         stream_threads[name] = t
+        logger.info(f"  ✅ {name} thread started")
 
     # Start screenshot video generator thread
+    logger.info("📸 Starting screenshot video generator...")
+    screenshot_video_generator.running = True
     screenshot_thread = threading.Thread(target=screenshot_video_generator.run_async, daemon=True, name='Screenshot')
     screenshot_thread.start()
     stream_threads['Screenshot'] = screenshot_thread
+    logger.info("  ✅ Screenshot generator started")
 
     time.sleep(1)
+    logger.info("\n🌐 Starting Flask web server...")
     start_server()

@@ -21,6 +21,7 @@ Browser (Duck Animation)
 - 🧠 Real-time EEG monitoring with Muse 2 headset
 - 📊 Live brain metrics (focus level, brain state, heart rate, head orientation)
 - 🦆 Automatic duck spawning when distraction is detected (2+ seconds)
+- 🎬 **Focus restoration videos** - Personalized duck videos generated from your screen activity, sent when you regain focus
 - ⌨️ **Focus calibration typing test** - 60-second typing test that measures your focused brain activity to establish a personalized baseline
 - 🎯 Activity log with focus state changes
 - 🔄 Auto-reconnection for all services
@@ -52,12 +53,23 @@ This will:
 - ✅ Install Muse LSL tools
 - ✅ Create `.env` template
 
-### 2. Configure API Key
+### 2. Configure API Keys
 
-Edit `python-backend/.env` and add your Anthropic API key:
+Edit `python-backend/.env` and add your API keys:
 ```bash
 ANTHROPIC_API_KEY=your_actual_api_key_here
+FISH_AUDIO_API_KEY=your_fish_audio_key_here
 ```
+
+**Important:** Remove any spaces around `=` signs in the `.env` file.
+
+### 2.5. Install Fish Audio SDK (Required for Video Generation)
+
+```bash
+brew install fish-audio-sdk
+```
+
+This enables the focus restoration video feature that generates personalized duck videos when you regain focus.
 
 ### 3. Find Your Muse Device
 

@@ -4,7 +4,7 @@
 
 - [ ] Rust installed: `cargo --version`
 - [ ] Node.js installed: `node --version` (v18+)
-- [ ] Python installed: `python3 --version` (v3.8+)
+- [ ] Python installed: `python --version` (v3.8+)
 - [ ] Ports 3030, 5000, 1420 are free
 
 ---
@@ -38,7 +38,7 @@ npm run tauri dev
 ```bash
 cd python-backend
 pip3 install flask requests
-python3 main.py
+python main.py
 ```
 
 ### Expected Results:

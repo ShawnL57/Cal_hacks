@@ -21,7 +21,7 @@ check_port() {
 }
 
 # Check if required commands exist
-command -v python3 >/dev/null 2>&1 || { echo "❌ python3 is required but not installed."; exit 1; }
+command -v python >/dev/null 2>&1 || { echo "❌ python is required but not installed."; exit 1; }
 command -v npm >/dev/null 2>&1 || { echo "❌ npm is required but not installed."; exit 1; }
 command -v cargo >/dev/null 2>&1 || { echo "❌ cargo (Rust) is required but not installed."; exit 1; }
 
@@ -37,7 +37,7 @@ echo ""
 if [ ! -f "python-backend/venv/bin/activate" ]; then
     echo "📦 Setting up Python virtual environment..."
     cd python-backend
-    python3 -m venv venv
+    python -m venv venv
     source venv/bin/activate
     pip install -r requirements.txt
     cd ..
@@ -78,7 +78,7 @@ sleep 2
 echo "🐍 Starting Python Backend..."
 osascript <<END
 tell application "Terminal"
-    do script "cd \"$(pwd)/python-backend\" && source venv/bin/activate && echo '🦆 Starting Python Backend...' && python3 main.py"
+    do script "cd \"$(pwd)/python-backend\" && source venv/bin/activate && echo '🦆 Starting Python Backend...' && python main.py"
 end tell
 END
 

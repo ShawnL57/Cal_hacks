@@ -15,7 +15,7 @@ NC='\033[0m'
 # Check for required tools
 echo "${YELLOW}Checking prerequisites...${NC}"
 
-command -v python3 >/dev/null 2>&1 || { echo "${RED}Error: python3 not found. Install Python 3.11+${NC}"; exit 1; }
+command -v python >/dev/null 2>&1 || { echo "${RED}Error: python not found. Install Python 3.11+${NC}"; exit 1; }
 command -v node >/dev/null 2>&1 || { echo "${RED}Error: node not found. Install Node.js 18+${NC}"; exit 1; }
 command -v npm >/dev/null 2>&1 || { echo "${RED}Error: npm not found. Install Node.js 18+${NC}"; exit 1; }
 command -v cargo >/dev/null 2>&1 || { echo "${RED}Error: cargo not found. Install Rust${NC}"; exit 1; }
@@ -29,7 +29,7 @@ cd python-backend || exit 1
 
 # Create virtual environment
 if [ ! -d "venv" ]; then
-    python3 -m venv venv
+    python -m venv venv
     echo "  ✅ Created Python virtual environment"
 else
     echo "  ℹ️  Virtual environment already exists"

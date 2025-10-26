@@ -344,7 +344,7 @@ function App() {
             <li>
               <strong>1. Connect Muse Headset</strong>
               Make sure your Muse 2 headset is powered on and the Python backend is running
-              <code>cd python-backend && python3 main.py</code>
+              <code>cd python-backend && python main.py</code>
             </li>
             <li>
               <strong>2. Load Browser Extension</strong>

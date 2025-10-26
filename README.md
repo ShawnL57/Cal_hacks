@@ -71,7 +71,7 @@ This will:
 cd python-backend
 
 # Create virtual environment (optional but recommended)
-python3 -m venv venv
+python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
@@ -82,7 +82,7 @@ echo "ANTHROPIC_API_KEY=your_key_here" > .env
 echo "FISH_AUDIO_API_KEY=your_key_here" >> .env
 
 # Run the backend
-python3 main.py
+python main.py
 ```
 
 The Python backend will:
@@ -118,7 +118,7 @@ npm run tauri dev
 **Terminal 2: Start Python Backend**
 ```bash
 cd python-backend
-python3 main.py
+python main.py
 ```
 
 **Browser: Enable Extension**

@@ -6,7 +6,7 @@ echo "Starting Muse Attention + Duck Controller System..."
 
 # Start Python backend
 cd calhackproj/python-backend
-python3 integrated_backend.py &
+python integrated_backend.py &
 BACKEND_PID=$!
 
 # Wait for backend to start

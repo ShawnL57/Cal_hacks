@@ -12,7 +12,7 @@
 ```bash
 cd calhackproj/python-backend
 pip install -r requirements.txt
-python3 integrated_backend.py
+python integrated_backend.py
 ```
 
 ### 2. Start Tauri App

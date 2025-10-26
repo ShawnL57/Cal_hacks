@@ -25,6 +25,9 @@ class AnnoyingDuck {
         this.FOCUS_THRESHOLD = 0.6; // Below this = unfocused
         this.lastFocusDropLoggedAt = 0;
         this.LOG_DEBOUNCE_MS = 5000; // Don't log same drop multiple times
+        // Video playback tracking
+        this.currentVideo = null;
+        this.isVideoPlaying = false;
         this.loadSettings();
         this.init();
         this.loadScrollPositions();
@@ -174,8 +177,15 @@ class AnnoyingDuck {
         this.duckElements = [];
     }
     showVideo(videoUrl) {
+        // If a video is already playing, reject this one
+        if (this.isVideoPlaying && this.currentVideo) {
+            console.log('[Video] Rejected: Another video is already playing');
+            return;
+        }
         console.log('[Video] Received URL:', videoUrl);
         const video = document.createElement('video');
+        this.currentVideo = video;
+        this.isVideoPlaying = true;
         video.style.cssText = `
             position: fixed;
             bottom: 20px;
@@ -191,6 +201,8 @@ class AnnoyingDuck {
         video.src = videoUrl;
         video.onerror = (e) => {
             console.error('[Video] Failed to load:', e, videoUrl);
+            this.isVideoPlaying = false;
+            this.currentVideo = null;
         };
         video.onloadeddata = () => {
             console.log('[Video] Loaded successfully');
@@ -198,8 +210,15 @@ class AnnoyingDuck {
         document.body.appendChild(video);
         setTimeout(() => video.style.opacity = '1', 50);
         video.onended = () => {
+            // Clear flags immediately to prevent race condition
+            this.isVideoPlaying = false;
+            this.currentVideo = null;
+            console.log('[Video] Playback completed, ready for next video');
+            // Then fade out and remove
             video.style.opacity = '0';
-            setTimeout(() => video.remove(), 500);
+            setTimeout(() => {
+                video.remove();
+            }, 500);
         };
         console.log('[Video] Element created and added to page');
     }
@@ -504,6 +523,7 @@ class AnnoyingDuck {
         // Handle video messages
         if (message.type === 'video') {
             console.log('🎬 Received video:', message.message);
+            this.removeAllDucks(); // Remove duck overlay when video starts
             this.showVideo(message.message);
             return;
         }

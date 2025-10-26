@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 Duck Lip Sync Generator - maps phonemes to mouth shapes.
 Works with audio files (wav/mp4/mp3) and outputs animation timeline.
