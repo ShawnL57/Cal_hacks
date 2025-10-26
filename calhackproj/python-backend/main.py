@@ -1620,10 +1620,10 @@ if __name__ == '__main__':
         t.start()
         stream_threads[name] = t
 
-    # Start screenshot analyzer thread
-    screenshot_thread = threading.Thread(target=screenshot_analyzer.run_async, daemon=True, name='Screenshot')
-    screenshot_thread.start()
-    stream_threads['Screenshot'] = screenshot_thread
+    # Start screenshot analyzer thread (DISABLED)
+    # screenshot_thread = threading.Thread(target=screenshot_analyzer.run_async, daemon=True, name='Screenshot')
+    # screenshot_thread.start()
+    # stream_threads['Screenshot'] = screenshot_thread
 
     time.sleep(1)
     start_server()
