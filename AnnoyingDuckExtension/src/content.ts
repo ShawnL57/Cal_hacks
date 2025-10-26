@@ -676,20 +676,30 @@ class AnnoyingDuck {
             return;
         }
 
-        // Find previous position on the current page
+        // Find positions on current page
         const currentUrl = window.location.href;
-        let index = this.currentPositionIndex - 1;
+        const pagePositions = this.scrollPositions
+            .map((pos, idx) => ({ pos, idx }))
+            .filter(item => item.pos.url === currentUrl);
 
-        while (index >= 0) {
-            if (this.scrollPositions[index].url === currentUrl) {
-                this.currentPositionIndex = index;
-                this.scrollToPosition(this.scrollPositions[index]);
-                return;
-            }
-            index--;
+        if (pagePositions.length === 0) {
+            this.showNotification('No positions saved on this page');
+            return;
         }
 
-        this.showNotification('No previous position on this page');
+        // Find current position in the filtered list
+        let currentIdx = pagePositions.findIndex(item => item.idx === this.currentPositionIndex);
+
+        // If not found or at the beginning, wrap to end
+        if (currentIdx <= 0) {
+            currentIdx = pagePositions.length - 1;
+        } else {
+            currentIdx--;
+        }
+
+        this.currentPositionIndex = pagePositions[currentIdx].idx;
+        this.scrollToPosition(pagePositions[currentIdx].pos);
+        console.log(`[SCROLL] Navigating to position ${currentIdx + 1}/${pagePositions.length}`);
     }
 
     private navigateToNextPosition(): void {
@@ -698,29 +708,40 @@ class AnnoyingDuck {
             return;
         }
 
-        // Find next position on the current page
+        // Find positions on current page
         const currentUrl = window.location.href;
-        let index = this.currentPositionIndex + 1;
+        const pagePositions = this.scrollPositions
+            .map((pos, idx) => ({ pos, idx }))
+            .filter(item => item.pos.url === currentUrl);
 
-        while (index < this.scrollPositions.length) {
-            if (this.scrollPositions[index].url === currentUrl) {
-                this.currentPositionIndex = index;
-                this.scrollToPosition(this.scrollPositions[index]);
-                return;
-            }
-            index++;
+        if (pagePositions.length === 0) {
+            this.showNotification('No positions saved on this page');
+            return;
         }
 
-        this.showNotification('No next position on this page');
+        // Find current position in the filtered list
+        let currentIdx = pagePositions.findIndex(item => item.idx === this.currentPositionIndex);
+
+        // If not found or at the end, wrap to beginning
+        if (currentIdx === -1 || currentIdx >= pagePositions.length - 1) {
+            currentIdx = 0;
+        } else {
+            currentIdx++;
+        }
+
+        this.currentPositionIndex = pagePositions[currentIdx].idx;
+        this.scrollToPosition(pagePositions[currentIdx].pos);
+        console.log(`[SCROLL] Navigating to position ${currentIdx + 1}/${pagePositions.length}`);
     }
 
     private scrollToPosition(position: ScrollPosition): void {
+        console.log(`[SCROLL] Scrolling to Y=${position.scrollY}px`);
         window.scrollTo({
             top: position.scrollY,
             behavior: 'smooth'
         });
 
-        this.showNotification(`Scrolled to: ${position.message}`);
+        this.showNotification(`Position ${this.currentPositionIndex + 1}: ${position.message}`);
     }
 
     private showPositionsList(): void {
