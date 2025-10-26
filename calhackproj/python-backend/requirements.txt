@@ -8,3 +8,4 @@ scipy>=1.11.2
 python-dotenv
 pillow
 anthropic
+fish-audio-sdk

@@ -194,11 +194,11 @@
             border-radius: 50%;
         }
 
-        input:checked + .slider {
+        input:checked+.slider {
             background-color: #4caf50;
         }
 
-        input:checked + .slider:before {
+        input:checked+.slider:before {
             transform: translateX(20px);
         }
 
@@ -278,7 +278,7 @@
         <div class="controls">
             <button id="reconnectBtn" class="btn-reconnect">Reconnect Backend</button>
             <button id="quackBtn" class="btn-primary">QUACK!</button>
-            <button id="testDistractionBtn" class="btn-secondary">📍 Log Current Position (Test)</button>
+            <button id="testDistractionBtn" class="btn-secondary">Log Current Position (Test)</button>
         </div>
 
         <div class="settings-section">
@@ -305,7 +305,8 @@
 
         <div class="settings-section">
             <div class="settings-title">Attention Timeline</div>
-            <canvas id="attentionChart" width="310" height="80" style="width: 100%; border-radius: 8px; background: rgba(0, 0, 0, 0.2);"></canvas>
+            <canvas id="attentionChart" width="310" height="80"
+                style="width: 100%; border-radius: 8px; background: rgba(0, 0, 0, 0.2);"></canvas>
             <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; opacity: 0.7;">
                 <span>2min ago</span>
                 <span>Now</span>

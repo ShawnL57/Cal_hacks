@@ -57,7 +57,7 @@ class AnnoyingDuck {
     private readonly MAX_HISTORY_DURATION = 120000; // 2 minutes in ms
 
     // Sliding window for sustained focus detection
-    private focusWindow: Array<{score: number, ts: number}> = [];
+    private focusWindow: Array<{ score: number, ts: number }> = [];
     private readonly WINDOW_MS = 3000; // 3 second sustained window
     private readonly FOCUS_THRESHOLD = 0.6; // Below this = unfocused
     private lastFocusDropLoggedAt = 0;
@@ -228,6 +228,43 @@ class AnnoyingDuck {
         this.duckElements = [];
     }
 
+    private showVideo(videoUrl: string): void {
+        console.log('[Video] Received URL:', videoUrl);
+
+        const video = document.createElement('video');
+        video.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 999999;
+            width: 256px;
+            height: 256px;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        `;
+        video.autoplay = true;
+        video.muted = false;
+        video.src = videoUrl;
+
+        video.onerror = (e) => {
+            console.error('[Video] Failed to load:', e, videoUrl);
+        };
+
+        video.onloadeddata = () => {
+            console.log('[Video] Loaded successfully');
+        };
+
+        document.body.appendChild(video);
+        setTimeout(() => video.style.opacity = '1', 50);
+
+        video.onended = () => {
+            video.style.opacity = '0';
+            setTimeout(() => video.remove(), 500);
+        };
+
+        console.log('[Video] Element created and added to page');
+    }
+
     private setupMessageListener(): void {
         chrome.runtime.onMessage.addListener(
             (message: Message, sender, sendResponse) => {
@@ -317,7 +354,7 @@ class AnnoyingDuck {
                             const scrollPercent = this.getScrollPercent();
                             if (scrollPercent !== null) {
                                 this.logFocusDrop(scrollPercent);
-                                this.spawnDuckCue();
+                                this.createDuck();
                                 this.showNotification('Test: Position logged at ' + (scrollPercent * 100).toFixed(1) + '% scroll');
                             } else {
                                 this.showNotification('Test: Unable to get scroll position');
@@ -415,7 +452,7 @@ class AnnoyingDuck {
             const scrollPercent = this.getScrollPercent();
             if (scrollPercent !== null) {
                 this.logFocusDrop(scrollPercent);
-                this.spawnDuckCue();
+                this.createDuck();
                 this.lastFocusDropLoggedAt = now;
                 console.log(`[SUSTAINED DROP] Avg focus: ${(avgFocus * 100).toFixed(1)}% over ${this.WINDOW_MS}ms at scroll ${(scrollPercent * 100).toFixed(1)}%`);
             }
@@ -475,39 +512,6 @@ class AnnoyingDuck {
         console.log('[FOCUS DROP LOGGED]', position);
     }
 
-    private spawnDuckCue(): void {
-        const cue = document.createElement('div');
-        cue.innerText = '🦆';
-        cue.style.cssText = `
-            position: fixed;
-            bottom: 10%;
-            left: 5%;
-            font-size: 32px;
-            z-index: 2147483647;
-            opacity: 0.8;
-            pointer-events: none;
-            animation: fadeInOut 3s ease-in-out;
-        `;
-
-        // Add fadeInOut animation
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes fadeInOut {
-                0% { opacity: 0; transform: scale(0.5); }
-                20% { opacity: 0.8; transform: scale(1); }
-                80% { opacity: 0.8; transform: scale(1); }
-                100% { opacity: 0; transform: scale(0.5); }
-            }
-        `;
-        document.head.appendChild(style);
-
-        document.body.appendChild(cue);
-        setTimeout(() => {
-            if (document.body.contains(cue)) {
-                cue.remove();
-            }
-        }, 3000);
-    }
 
     private connectWebSocket(): void {
         console.log(`[WebSocket] Attempting connection to ${this.WEBSOCKET_URL}`);
@@ -581,6 +585,13 @@ class AnnoyingDuck {
                 this.showNotification('EEG Disconnected - Please connect your Muse headset', 10000);
                 this.removeAllDucks();
             }
+            return;
+        }
+
+        // Handle video messages
+        if (message.type === 'video') {
+            console.log('🎬 Received video:', message.message);
+            this.showVideo(message.message);
             return;
         }
 
@@ -893,7 +904,7 @@ class AnnoyingDuck {
         `;
 
         const prevBtn = document.createElement('button');
-        prevBtn.textContent = '← Prev';
+        prevBtn.textContent = 'Prev';
         prevBtn.style.cssText = btnStyle;
         prevBtn.onclick = () => this.navigateToPreviousPosition();
         prevBtn.onmouseenter = () => prevBtn.style.background = 'rgba(255, 255, 255, 0.2)';
@@ -907,7 +918,7 @@ class AnnoyingDuck {
         allBtn.onmouseleave = () => allBtn.style.background = 'rgba(255, 255, 255, 0.1)';
 
         const nextBtn = document.createElement('button');
-        nextBtn.textContent = 'Next →';
+        nextBtn.textContent = 'Next';
         nextBtn.style.cssText = btnStyle;
         nextBtn.onclick = () => this.navigateToNextPosition();
         nextBtn.onmouseenter = () => nextBtn.style.background = 'rgba(255, 255, 255, 0.2)';

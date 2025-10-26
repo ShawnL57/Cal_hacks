@@ -6,6 +6,7 @@ Includes: EEG, PPG (heart rate), Accelerometer, Gyroscope
 import os
 import threading
 import time
+from pathlib import Path
 from collections import deque
 from flask import Flask, render_template_string, jsonify, request
 from pylsl import StreamInlet, resolve_streams
@@ -19,9 +20,7 @@ import math
 import requests
 from datetime import datetime
 from attention_classifier import AttentionClassifier
-import base64
-from PIL import ImageGrab, Image
-from anthropic import Anthropic
+from screenshot_video_generator import ScreenshotVideoGenerator
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -43,168 +42,11 @@ LSL_GYRO_CHUNK = 1
 # Initialize attention classifier
 attention_classifier = AttentionClassifier(sampling_rate=MUSE_SAMPLING_EEG_RATE)
 
-# Screenshot Analysis Class
-class ScreenshotAnalyzer:
-    """Async screenshot analyzer that sends analysis to Tauri backend"""
+# Initialize screenshot video generator
+screenshot_video_generator = ScreenshotVideoGenerator(interval=30)
 
-    def __init__(self, interval=5, tauri_url="http://localhost:3030/api/message"):
-        self.interval = interval
-        self.screenshot_count = 0
-        self.running = False
-        self.tauri_url = tauri_url
-
-        # Create Screenshots directory if it doesn't exist
-        self.screenshots_dir = os.path.join(os.path.dirname(__file__), "Screenshots")
-        os.makedirs(self.screenshots_dir, exist_ok=True)
-
-        # Initialize Claude client
-        api_key = os.getenv('ANTHROPIC_API_KEY')
-        if api_key:
-            self.claude_client = Anthropic(api_key=api_key)
-        else:
-            print("Warning: ANTHROPIC_API_KEY not found in environment")
-            self.claude_client = None
-
-        self.last_analysis = None
-        self.last_screenshot_time = 0
-
-    def analyze_screenshot_with_claude(self, image_path, is_before=True):
-        """Send screenshot to Claude AI for analysis"""
-        if not self.claude_client:
-            return None
-
-        # Create prompt based on whether it's before or after
-        if is_before:
-            prompt = """Analyze this screenshot. What's currently on the screen?
-            Describe what you see and generate 2-3 interesting questions about the content or context."""
-        else:
-            prompt = """Analyze this screenshot and compare it to what you saw before.
-            What changed? What's the user doing? Generate 2-3 insightful questions about their activity or the content."""
-
-        try:
-            # Get absolute path to the image file
-            abs_image_path = os.path.abspath(image_path)
-
-            # Read and encode the image as base64
-            with open(abs_image_path, "rb") as image_file:
-                image_data = base64.standard_b64encode(image_file.read()).decode("utf-8")
-
-            # Use Claude's messages API with vision
-            response = self.claude_client.messages.create(
-                model="claude-3-5-haiku-20241022",
-                max_tokens=1024,
-                temperature=0.7,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": "image/png",
-                                    "data": image_data,
-                                },
-                            },
-                            {
-                                "type": "text",
-                                "text": prompt
-                            }
-                        ],
-                    }
-                ],
-            )
-
-            analysis = response.content[0].text
-            return analysis
-
-        except Exception as e:
-            print(f"Screenshot analysis error: {e}")
-            return None
-
-    def send_to_tauri(self, analysis_text, screenshot_number):
-        """Send screenshot analysis to Tauri backend"""
-        try:
-            payload = {
-                "message": analysis_text,
-                "timestamp": datetime.now().isoformat(),
-                "type": "screenshot_analysis",
-                "screenshot_data": {
-                    "screenshot_number": screenshot_number,
-                    "analysis": analysis_text
-                }
-            }
-
-            response = requests.post(self.tauri_url, json=payload, timeout=2)
-            if response.status_code == 200:
-                print(f"📸 Screenshot analysis #{screenshot_number} sent to Tauri")
-                return True
-            return False
-        except Exception as e:
-            print(f"Error sending to Tauri: {e}")
-            return False
-
-    def take_and_analyze_screenshot(self):
-        """Take a screenshot, analyze it, and send to Tauri"""
-        try:
-            # Take screenshot
-            img = ImageGrab.grab()
-            img = img.resize((1280, 720), Image.LANCZOS)
-            screenshot_path = os.path.join(self.screenshots_dir, f"screenshot_{self.screenshot_count}.png")
-            img.save(screenshot_path, optimize=True, quality=85)
-
-            # Analyze screenshot
-            is_first = self.screenshot_count == 0
-            analysis = self.analyze_screenshot_with_claude(screenshot_path, is_before=is_first)
-
-            if analysis:
-                self.last_analysis = analysis
-                self.send_to_tauri(analysis, self.screenshot_count)
-
-            self.screenshot_count += 1
-            self.last_screenshot_time = time.time()
-
-            # Clean up old screenshots (keep last 2)
-            self.cleanup_old_screenshots()
-
-        except Exception as e:
-            print(f"Screenshot capture error: {e}")
-
-    def cleanup_old_screenshots(self):
-        """Keep only the last 2 screenshots"""
-        try:
-            files = sorted([f for f in os.listdir(self.screenshots_dir) if f.startswith("screenshot_")],
-                         key=lambda x: os.path.getmtime(os.path.join(self.screenshots_dir, x)))
-            if len(files) > 2:
-                for old_file in files[:-2]:
-                    os.remove(os.path.join(self.screenshots_dir, old_file))
-                    print(f"🗑️ Deleted old screenshot: {old_file}")
-        except Exception as e:
-            print(f"Cleanup error: {e}")
-
-    def run_async(self):
-        """Run screenshot analysis loop asynchronously"""
-        self.running = True
-        print("📸 Screenshot analyzer started")
-
-        while self.running:
-            try:
-                self.take_and_analyze_screenshot()
-                time.sleep(self.interval)
-            except KeyboardInterrupt:
-                break
-            except Exception as e:
-                print(f"Screenshot loop error: {e}")
-                time.sleep(self.interval)
-
-        print("📸 Screenshot analyzer stopped")
-
-    def stop(self):
-        """Stop the screenshot analyzer"""
-        self.running = False
-
-# Initialize screenshot analyzer
-screenshot_analyzer = ScreenshotAnalyzer(interval=5)
+# Global variable to store Flask port
+flask_port = None
 
 app = Flask(__name__)
 
@@ -272,6 +114,7 @@ tauri_send_interval = 0.5  # Send to Tauri every 500ms
 attention_history = deque(maxlen=50)  # 5 seconds at 10 samples/sec
 last_duck_sent_time = 0
 duck_cooldown = 30  # Don't send another duck for 30 seconds
+last_focus_state = None  # Track previous focus state to detect transitions
 
 DUCK_MESSAGES = [
     "Hey! Stay focused! 🦆",
@@ -280,6 +123,31 @@ DUCK_MESSAGES = [
     "Getting distracted? Back to work! 🦆",
     "Losing focus! Time to concentrate! 🦆",
 ]
+
+def send_focus_restoration_video():
+    """Send generated video when user regains focus"""
+    global flask_port
+    video_path = screenshot_video_generator.get_latest_video_path()
+    if not video_path:
+        print("No video available to send")
+        return
+
+    try:
+        # Use the cached Flask port
+        if flask_port is None:
+            print("Flask port not initialized yet")
+            return
+
+        filename = Path(video_path).name
+        video_url = f'http://localhost:{flask_port}/video/{filename}'
+
+        requests.post('http://localhost:3030/api/video', json={
+            'video_url': video_url,
+            'timestamp': datetime.now().isoformat()
+        }, timeout=2)
+        print(f"Focus restored - sent video: {video_url}")
+    except Exception as e:
+        print(f"Error sending focus restoration video: {e}")
 
 def check_and_send_duck_alert():
     """Check 5-second attention window and send duck if unfocused"""
@@ -598,6 +466,14 @@ def stream_eeg():
                 if current_time - last_classification_time > classification_interval:
                     if len(data_buffers['EEG']['TP9']) > 100:
                         update_all_metrics()
+
+                        # Detect focus state transitions
+                        global last_focus_state
+                        current_state = current_metrics['attention']
+                        if last_focus_state and last_focus_state in ['distracted', 'drowsy'] and current_state in ['focused', 'neutral']:
+                            # User regained focus!
+                            send_focus_restoration_video()
+                        last_focus_state = current_state
 
                         # Send metrics to Tauri frontend
                         send_to_tauri()
@@ -1064,6 +940,50 @@ def api_metrics():
         'movement_intensity': current_metrics['movement_intensity'],
         'theta_beta_ratio': current_metrics.get('attention_confidence', 0)  # Using confidence as theta_beta proxy
     })
+
+@app.route('/video/<filename>')
+def serve_video(filename):
+    """Serve video files"""
+    from pathlib import Path
+    from flask import send_file
+    video_path = Path(__file__).parent / 'assets' / filename
+    if video_path.exists():
+        return send_file(video_path, mimetype='video/webm' if filename.endswith('.webm') else 'video/mp4')
+    return {'error': 'Video not found'}, 404
+
+@app.route('/api/generate-video', methods=['POST'])
+def generate_video_endpoint():
+    """Generate lip-sync video and send to Tauri backend"""
+    from pathlib import Path
+    import subprocess
+
+    data = request.json
+    audio_path = data.get('audio_path')
+    text = data.get('text', '')
+
+    if not audio_path:
+        return jsonify({'error': 'audio_path required'}), 400
+
+    # Generate video using lipsync_generator
+    try:
+        output_path = Path(audio_path).parent / (Path(audio_path).stem + '_duck.mp4')
+        result = subprocess.run([
+            'python', 'lipsync_generator.py', audio_path, text
+        ], capture_output=True, text=True, timeout=60)
+
+        if result.returncode != 0:
+            return jsonify({'error': result.stderr}), 500
+
+        # Send video path to Tauri
+        video_url = f'file://{output_path.absolute()}'
+        requests.post('http://localhost:3030/api/video', json={
+            'video_url': video_url,
+            'timestamp': datetime.now().isoformat()
+        })
+
+        return jsonify({'video_path': str(output_path), 'video_url': video_url})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/calibrate', methods=['POST'])
 def calibrate():
@@ -1537,37 +1457,37 @@ def clear():
 
 @app.route('/screenshot/status')
 def screenshot_status():
-    """Get screenshot analyzer status"""
+    """Get screenshot video generator status"""
     return jsonify({
-        'running': screenshot_analyzer.running,
-        'screenshot_count': screenshot_analyzer.screenshot_count,
-        'last_analysis': screenshot_analyzer.last_analysis,
-        'last_screenshot_time': screenshot_analyzer.last_screenshot_time,
-        'interval': screenshot_analyzer.interval
+        'running': screenshot_video_generator.running,
+        'screenshot_count': screenshot_video_generator.screenshot_count,
+        'last_analysis': screenshot_video_generator.last_analysis,
+        'last_screenshot_time': screenshot_video_generator.last_screenshot_time,
+        'interval': screenshot_video_generator.interval
     })
 
 @app.route('/screenshot/latest')
 def screenshot_latest():
-    """Get latest screenshot analysis"""
+    """Get latest video path"""
     return jsonify({
-        'analysis': screenshot_analyzer.last_analysis,
-        'screenshot_number': screenshot_analyzer.screenshot_count,
-        'timestamp': screenshot_analyzer.last_screenshot_time
+        'video_path': screenshot_video_generator.get_latest_video_path(),
+        'screenshot_number': screenshot_video_generator.screenshot_count,
+        'timestamp': screenshot_video_generator.last_screenshot_time
     })
 
 @app.route('/screenshot/start', methods=['POST'])
 def screenshot_start():
-    """Start screenshot analyzer (already running by default)"""
-    if not screenshot_analyzer.running:
-        screenshot_thread = threading.Thread(target=screenshot_analyzer.run_async, daemon=True, name='Screenshot')
+    """Start screenshot video generator"""
+    if not screenshot_video_generator.running:
+        screenshot_thread = threading.Thread(target=screenshot_video_generator.run_async, daemon=True, name='Screenshot')
         screenshot_thread.start()
         return {'status': 'started'}
     return {'status': 'already_running'}
 
 @app.route('/screenshot/stop', methods=['POST'])
 def screenshot_stop():
-    """Stop screenshot analyzer"""
-    screenshot_analyzer.stop()
+    """Stop screenshot video generator"""
+    screenshot_video_generator.stop()
     return {'status': 'stopped'}
 
 def find_available_port():
@@ -1584,28 +1504,36 @@ def find_available_port():
     raise RuntimeError("No available ports in range 5000-5005")
 
 def start_server():
-    port = find_available_port()
+    global flask_port
+    flask_port = find_available_port()
     print("\n" + "="*70)
     print("  🧠  MUSE 2 FULL SYSTEM MONITOR")
     print("="*70)
-    print(f"🌐 Local access:    http://localhost:{port}")
+    print(f"🌐 Local access:    http://localhost:{flask_port}")
     import socket
     try:
         hostname = socket.gethostname()
         local_ip = socket.gethostbyname(hostname)
         if local_ip != '127.0.0.1':
-            print(f"🌐 Network access:  http://{local_ip}:{port}")
+            print(f"🌐 Network access:  http://{local_ip}:{flask_port}")
     except:
         pass
     print("📊 Monitoring: EEG + PPG + Accelerometer + Gyroscope")
     print("="*70 + "\n")
-    app.run(debug=False, use_reloader=False, host='0.0.0.0', port=port, threaded=True)
+    app.run(debug=False, use_reloader=False, host='0.0.0.0', port=flask_port, threaded=True)
 
 if __name__ == '__main__':
     streaming = True
 
     if not connect_to_streams():
-        print("Warning: Could not connect to all streams. Continuing anyway...")
+        print("\n❌ ERROR: Could not connect to EEG streams!")
+        print("Please make sure:")
+        print("  1. Your Muse 2 headset is turned on")
+        print("  2. muselsl is streaming (run: muselsl stream)")
+        print("  3. The headset is paired via Bluetooth")
+        exit(1)
+
+    print("✅ All EEG streams connected successfully!\n")
 
     # Start streaming threads
     threads = [
@@ -1620,10 +1548,10 @@ if __name__ == '__main__':
         t.start()
         stream_threads[name] = t
 
-    # Start screenshot analyzer thread (DISABLED)
-    # screenshot_thread = threading.Thread(target=screenshot_analyzer.run_async, daemon=True, name='Screenshot')
-    # screenshot_thread.start()
-    # stream_threads['Screenshot'] = screenshot_thread
+    # Start screenshot video generator thread
+    screenshot_thread = threading.Thread(target=screenshot_video_generator.run_async, daemon=True, name='Screenshot')
+    screenshot_thread.start()
+    stream_threads['Screenshot'] = screenshot_thread
 
     time.sleep(1)
     start_server()

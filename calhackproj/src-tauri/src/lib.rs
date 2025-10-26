@@ -44,6 +44,12 @@ pub struct MuseMetrics {
     pub theta_beta_ratio: f64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VideoMessage {
+    pub video_url: String,
+    pub timestamp: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct ServiceStatus {
     pub http_server: bool,
@@ -109,6 +115,36 @@ async fn receive_message(
     Json(serde_json::json!({
         "status": "success",
         "broadcasted": true
+    }))
+}
+
+// HTTP endpoint to receive video from Python backend
+async fn receive_video(
+    State(state): State<AppState>,
+    Json(video): Json<VideoMessage>,
+) -> impl IntoResponse {
+    println!("🎬 Received video: {}", video.video_url);
+
+    // Create message to send to extension
+    let video_message = DuckMessage {
+        message: video.video_url.clone(),
+        timestamp: video.timestamp,
+        msg_type: "video".to_string(),
+        focus_state: None,
+        metrics: None,
+    };
+
+    // Emit to Tauri frontend (Activity Log)
+    if let Some(app) = state.tauri_handle.lock().unwrap().as_ref() {
+        let _ = app.emit("duck-message", video_message.clone());
+    }
+
+    // Broadcast to WebSocket clients (browser extension)
+    let _ = state.ws_tx.send(video_message);
+
+    Json(serde_json::json!({
+        "status": "success",
+        "video_url": video.video_url
     }))
 }
 
@@ -490,6 +526,7 @@ async fn start_servers(app_handle: tauri::AppHandle) {
     let app = Router::new()
         .route("/health", get(health_check))
         .route("/api/message", post(receive_message))
+        .route("/api/video", post(receive_video))
         .route("/ws", get(websocket_handler))
         .layer(
             CorsLayer::new()

@@ -38,6 +38,11 @@ A desktop application that sends random duck messages from Python → Tauri → 
 - **Node.js 18+** - [Install](https://nodejs.org/)
 - **Python 3.8+** - [Install](https://www.python.org/)
 - **Chrome/Edge Browser**
+- **ffmpeg** - [Install](https://ffmpeg.org/) (for video generation)
+- **Muse EEG Headset** - [muse-lsl](https://github.com/alexandrebarachant/muse-lsl) for streaming
+- **API Keys**:
+  - Anthropic Claude API key
+  - Fish Audio API key
 
 ---
 
@@ -72,14 +77,22 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
+# Create .env file with API keys
+echo "ANTHROPIC_API_KEY=your_key_here" > .env
+echo "FISH_AUDIO_API_KEY=your_key_here" >> .env
+
 # Run the backend
 python3 main.py
 ```
 
 The Python backend will:
 - Start Flask server on port 5000
-- Automatically send random duck messages every 5-10 seconds
-- Post messages to Tauri at `http://localhost:3030/api/message`
+- Connect to Muse EEG headset for focus detection
+- Take screenshots every 30 seconds
+- Generate questions with Claude AI
+- Create TTS audio with Fish Audio (Donald Duck voice)
+- Generate lip-sync videos with animated duck
+- Send video when user regains focus
 
 ### 3. Install Browser Extension
 
@@ -118,19 +131,27 @@ python3 main.py
 ## 📊 What Each Component Does
 
 ### Python Backend (`python-backend/main.py`)
-- Generates random duck messages every 5-10 seconds
-- Posts them to Tauri's HTTP endpoint
+- Connects to Muse EEG headset for real-time brain monitoring
+- Takes screenshots every 30 seconds
+- Uses Claude AI to generate questions about screen content
+- Generates TTS audio with Fish Audio (Donald Duck voice)
+- Creates lip-sync videos with animated duck mouth movements
+- Detects focus state changes and sends videos when focus is restored
 - Endpoints:
   - `GET /health` - Health check
-  - `GET /api/stats` - View statistics
-  - `POST /api/send-now` - Manually trigger a message
+  - `GET /api/metrics` - Current EEG metrics
+  - `GET /video/<filename>` - Serve generated videos
+  - `GET /screenshot/status` - Screenshot generator status
+  - `GET /screenshot/latest` - Latest generated video path
 
 ### Tauri Backend (`calhackproj/src-tauri/src/lib.rs`)
 - **HTTP Server (Port 3030)**
   - `POST /api/message` - Receives messages from Python
+  - `POST /api/video` - Receives video URLs from Python
   - `GET /health` - Health check
 - **WebSocket Server (Port 3030/ws)**
   - Broadcasts messages to all connected browser extensions
+  - Forwards video URLs to browser for display
 - **Tauri Commands**
   - `get_service_status` - Returns status of all services
 
@@ -141,19 +162,21 @@ python3 main.py
   - Real-time activity log
   - Setup instructions
 
-### Browser Extension (`browser-extension/`)
+### Browser Extension (`AnnoyingDuckExtension/`)
 - **Background Worker** (`background.js`)
   - Connects to Tauri WebSocket
   - Auto-reconnects on disconnect
   - Forwards messages to content scripts
-- **Content Script** (`content.js`)
-  - Injects messages into web pages
-  - Beautiful floating notifications
-  - Auto-dismisses after 5 seconds
+- **Content Script** (`content.ts`)
+  - Spawns animated walking duck GIFs on distractions
+  - Displays lip-sync videos bottom-right with fade in/out
+  - Tracks attention metrics over 2-minute timeline
+  - Saves scroll positions when focus drops
 - **Popup** (`popup.html`)
-  - Shows connection status
-  - Message statistics
-  - Manual reconnect button
+  - Shows EEG connection status
+  - Displays attention timeline chart
+  - Manual quack button for testing
+  - Settings for duck visibility
 
 ---
 
