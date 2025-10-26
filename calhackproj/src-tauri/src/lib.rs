@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 use std::process::{Command, Child};
-use tauri::{Manager, Emitter, AppHandle};
+use tauri::{Manager, Emitter};
 use serde::{Deserialize, Serialize};
 use axum::{
     extract::{State, WebSocketUpgrade, ws::{WebSocket, Message}},

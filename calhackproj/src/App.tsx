@@ -272,6 +272,31 @@ function App() {
             </div>
           </div>
         </div>
+        <div style={{ marginTop: '20px', textAlign: 'center' }}>
+          <button
+            onClick={() => setShowTypingTest(true)}
+            style={{
+              background: museConnected
+                ? 'linear-gradient(135deg, #00ff00, #00aa00)'
+                : 'linear-gradient(135deg, #888, #666)',
+              color: '#000',
+              fontWeight: 'bold',
+              fontSize: '16px',
+              padding: '15px 30px',
+              cursor: museConnected ? 'pointer' : 'not-allowed',
+              opacity: museConnected ? 1 : 0.6
+            }}
+            disabled={!museConnected}
+            title={museConnected ? 'Start typing test to calibrate your focus baseline' : 'Connect Muse headset first'}
+          >
+            📝 Start Focus Calibration Test
+          </button>
+          {!museConnected && (
+            <p style={{ marginTop: '10px', fontSize: '14px', color: '#ff9800' }}>
+              ⚠️ Connect your Muse headset to start calibration
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Activity Log */}
